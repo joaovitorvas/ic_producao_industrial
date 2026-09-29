@@ -15,3 +15,5 @@ _site/
 # Cache de execução de blocos de código
 *_cache/
 *_files/
+/.quarto/
+**/*.quarto_ipynb
