@@ -1,0 +1,7 @@
+---
+title: "Mudanças de tendência da produção industrial no Brasil"
+author: "João Vitor Vasconcelos Lima"
+---
+
+Aqui estarão documentadas as análises para as séries temporais das tendências da produção industrial brasileira. 
+

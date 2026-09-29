@@ -1,0 +1,25 @@
+project:
+  type: website
+
+website:
+  title: "IC | Produção Industrial"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Início
+      - text: "Análises"
+        menu:
+          - href: analises/01_exploratoria.qmd
+            text: "1. Exploratória"
+          - href: analises/02_controlesintetico.qmd
+            text: "2. Controle Sintético"
+
+lang: pt
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-location: left
+    number-sections: true
+    code-fold: false
+    self-contained: true

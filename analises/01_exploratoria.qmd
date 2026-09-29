@@ -1,0 +1,84 @@
+---
+title: "Análise Exploratória e Modelos Iniciais"
+---
+
+
+```{r}
+#| message: false
+#| warning: false
+
+d <- read.csv(
+  "./../dados/ipeadataPI.csv",
+  fileEncoding = "Latin1"
+)
+
+names(d)
+y <- d[,2]
+
+```
+
+## Serie Temporal de Período igual a 12
+
+```{r}
+#| message: false
+#| warning: false
+ts.plot(ts(y,freq=12,start=2002), xlab="Periodo", type="l", ylab="Desenvolvimento industrial do Brasil entre 2002 e 07/2026")
+abline(v = 2008 + 11/12, col = "red", lty = 2, lwd = 2)
+abline(v = 2014 + 11/12, col = "blue", lty = 2, lwd = 2)
+abline(v = 2020 + 03/04, col = "green", lty = 2, lwd = 2)
+
+```
+
+## Justificativa de saltos
+
+Aqui está a tabela atualizada com as cores correspondentes (e o estilo da linha) baseadas no seu código R inseridas na quarta coluna (Legenda):
+
+## Serie Temporal de Período igual a 12
+
+```r
+ts.plot(ts(y,freq=12,start=2002), xlab="Periodo", type="l", ylab="Desenvolvimento industrial do Brasil entre 2002 e 07/2026")
+abline(v = 2008 + 11/12, col = "red", lty = 2, lwd = 2)
+abline(v = 2014 + 11/12, col = "blue", lty = 2, lwd = 2)
+abline(v = 2020 + 03/04, col = "green", lty = 2, lwd = 2)
+
+```
+
+## Justificativa de saltos
+
+| Período | Motivo (Candidato) | Fontes | Legenda |
+| --- | --- | --- | --- |
+| Dezembro de 2008 | Crise financeira internacional, com queda significativa e mudança na tendência de crescimento. |  | Linha tracejada vermelha |
+| Novembro de 2014 | Crise ligada a política de gastos do então governo |  | Linha tracejada azul |
+| Março de 2020 | OMS declara pandemia | [G1](https://g1.globo.com/bemestar/coronavirus/noticia/2020/03/11/oms-declara-pandemia-de-coronavirus.ghtml?utm_source=gemini)/[BBC](https://www.bbc.com/portuguese/geral-51842518?utm_source=gemini) | Linha tracejada verde |
+
+```{r}
+#| message: false
+#| warning: false
+yts<- ts(y,freq=12,start=2002)
+plot(stl(yts, "per"))
+plot(stl(nottem, s.window = 7, t.window = 50, t.jump = 1))
+
+```
+
+## Busca por quebras 
+
+```{r}
+#| message: false
+#| warning: false
+library(strucchange)
+
+quebras <- breakpoints(yts ~ 1)
+summary(quebras)
+
+datas_quebras <- breakdates(quebras)
+print("Datas das mudanças de patamar:")
+print(datas_quebras)
+
+modelo_patamares <- lm(yts ~ breakfactor(quebras))
+print("Média de produção em cada patamar:")
+summary(modelo_patamares)
+
+plot(yts, main="Quebras Estruturais Matemáticas")
+lines(quebras, col="red", lwd=2)
+
+```

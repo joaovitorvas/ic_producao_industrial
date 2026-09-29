@@ -1,0 +1,17 @@
+# Quarto (metadados e páginas geradas)
+.quarto/
+_site/
+
+# Variáveis de ambiente e credenciais
+.env
+**/.env
+
+# Arquivos temporários e de ambiente do R
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# Cache de execução de blocos de código
+*_cache/
+*_files/
