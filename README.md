@@ -2,7 +2,7 @@
 
 Repositório central de documentação, códigos, notas teóricas e análises empíricas desenvolvidas no âmbito do projeto de **Iniciação Científica (IC)** no **Instituto de Matemática e Estatística da Universidade de São Paulo (IME-USP)**.
 
-- **Pesquisador:** João Vítor Vasconcelos Lima (Bacharelando em Estatística — IME-USP)
+- **Pesquisador:** João Vitor Vasconcelos Lima (Bacharelando em Estatística — IME-USP)
 - **Orientadora:** Profª. Dra. Airlane Pereira Alencar (Departamento de Estatística — IME-USP)
 - **Palavras-chave:** Séries Temporais, Modelos de Regressão Segmentada, SARIMA / ARIMAX, Modelos GARMA, Decomposição STL, Controle Sintético.
 
