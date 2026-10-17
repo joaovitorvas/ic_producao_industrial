@@ -5,3 +5,5 @@ author: "João Vitor Vasconcelos Lima"
 
 Aqui estarão documentadas as análises para as séries temporais das tendências da produção industrial brasileira. 
 
+Projeto feito sob orientação da Professora Airlane P. Alencer, do Instituto de Matemática e Estatística da Universidade de São Paulo (IME-USP). 
+

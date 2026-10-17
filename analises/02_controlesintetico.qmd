@@ -1,6 +1,17 @@
 ---
-title: "Impacto da Crise de 2014 com variavéis de controle sintético"
+title: "Impacto da Crise de 2014 com Variáveis de Controle Sintético"
 ---
+
+## Justificativa Econométrica e Desenho do Estudo
+
+Para estimar o efeito causal da **Grande Recessão Brasileira (2014–2016)** sobre a produção industrial física, aplicamos o Método de Controle Sintético seguindo estritamente os requisitos metodológicos de Abadie (2021) e Ferman & Pinto (2021):
+
+1. **Datação da Intervenção e Antecipação (`Abril/2014`):** Segundo o Comitê de Datação de Ciclos Econômicos (CODACE/FGV) e Barbosa Filho (2017), a recessão brasileira teve início formal no **2º trimestre de 2014** (abril de 2014), acumulando quedas sucessivas já entre março e junho de 2014. Fixar a intervenção apenas em outubro/novembro de 2014 violaria a hipótese de ausência de antecipação/efeito pré-tratamento (Abadie, 2021, Seção 3.3), contaminando os preditores com os primeiros seis meses da própria recessão.
+2. **Normalização pela Média Pré-Intervenção (`base_pre = 100`):** Ancorar o número-índice em um único ano civil (`2010 = 100`) introduz viés de nível e problemas de envoltória convexa, pois 2010 foi simultaneamente um pico cíclico transitório de estímulos no Brasil (+10,5% sobre 2009) e um ano de choques negativos em doadores importantes (como o terremoto de magnitude 8,8 no Chile em fevereiro de 2010). Seguindo Abadie (2021, Seção 3.4) e Ferman & Pinto (2021), normalizamos a série de cada país pela sua própria **média de todo o período pré-intervenção ($t \le T_0$)**, eliminando diferenças de escala sem distorcer a inclinação relativa pós-2010.
+3. **Seleção Criteriosa do *Donor Pool*:**
+   - **Exclusão de choques idiossincráticos regionais/setoriais:** Removemos os epicentros da **Crise da Dívida Soberana Europeia de 2011–2013** (Espanha, Portugal e Itália), que sofreram recessão bancária e fiscal severa no período imediatamente anterior a 2014, e a **Holanda**, cuja série de produção industrial total (`NLDPRINTO01GPSAM`) é fortemente distorcida pelos cortes regulatórios na extração de gás natural do campo de Groningen a partir de 2013–2014. Também mantemos excluídos exportadores primários de petróleo (Colômbia, Noruega, Canadá e Rússia) afetados pelo colapso do Brent em 2014–2015.
+   - **Padronização setorial:** Substituímos a série de manufatura do México (`MEXPRMNTO01GPSAM`) pela série de indústria geral (`MEXPRINTO01GPSAM`), compatibilizando-a com a série brasileira (`BRAPRINTO01GPSAM`).
+4. **Partição Ortogonal das Janelas de Preditores:** Em vez de janelas sobrepostas no final do período pré-tratamento — que geram colinearidade na matriz $\mathbf{X}_0$ e distorcem a matriz de ponderação $\mathbf{V}$ —, particionamos o pré-período em **seis janelas macroeconômicas mutuamente exclusivas** (`2002–2004`, `2005–2007`, `2008–2009`, `2010–2011`, `2012` e `2013–Mar/2014`).
 
 ```{r}
 #| message: false
@@ -16,133 +27,239 @@ if (file.exists("./../dados/.env")) {
   dotenv::load_dot_env(file = "./../dados/.env")
 }
 
-fredr_set_key(Sys.getenv("FRED_API_KEY")) # Chave da API
-
+fredr_set_key(Sys.getenv("FRED_API_KEY"))
 ```
 
-Para padronizar as séries resolvi puxar todas as do pacote fredr.
+```{r}
+data_ini         <- as.Date("2002-01-01")
+data_fim         <- as.Date("2019-12-01")
+data_intervencao <- as.Date("2014-04-01") # Início do 2º Tri/2014 (CODACE/FGV)
+
+id <- function(d) {
+  d <- as.Date(d)
+  (year(d) - year(data_ini)) * 12 + month(d) - month(data_ini) + 1
+}
+
+t_tratamento <- id(data_intervencao) # Abr/2014 = 148
+t_pre        <- t_tratamento - 1     # Mar/2014 = 147 (último mês pré-intervenção)
+```
+
+## Dados e Construção do Painel
+
+Extraímos as séries de variação mensal com ajuste sazonal (`GPSAM`) da OCDE via `fredr`, reconstruímos o número-índice encadeado e normalizamos cada unidade pela sua média no período pré-intervenção ($1, \dots, T_0$).
 
 ```{r}
 #| message: false
 #| warning: false
 
 paises_ids <- c(
-  "Brasil"        = "BRAPROINDMISMEI",
-  "India"         = "INDPROINDMISMEI",
-  "Africa_do_Sul" = "ZAFPROMANMISMEI",
-  "Chile"         = "CHLPROINDMISMEI",
-  "Colombia"      = "COLPRINTO01IXOBSAM",
-  "Polonia"       = "POLPROINDMISMEI",
-  "Turquia"       = "TURPROINDMISMEI",
-  "Indonesia"     = "IDNPROMANMISMEI",
-  "Russia"        = "RUSPROINDMISMEI",
-  "Coreia_do_Sul" = "KORPROINDMISMEI",
-  "Hungria"       = "HUNPROINDMISMEI",
-  "Rep_Tcheca"    = "CZEPROINDMISMEI",
-  "Grecia"        = "GRCPROINDMISMEI",
-  "Finlandia"     = "FINPROINDMISMEI"
+  "Brasil"        = "BRAPRINTO01GPSAM", # Unidade tratada
+
+  # Grupo 1: América Latina & emergentes de recursos naturais
+  "Chile"         = "CHLPRINTO01GPSAM",
+  "Mexico"        = "MEXPRINTO01GPSAM",
+  "Africa_do_Sul" = "ZAFPRMNTO01GPSAM",
+
+  # Grupo 2: Emergentes industriais (Ásia e Leste Europeu)
+  "India"         = "INDPRINTO01GPSAM",
+  "Coreia_do_Sul" = "KORPRINTO01GPSAM",
+  "Turquia"       = "TURPRINTO01GPSAM",
+  "Polonia"       = "POLPRINTO01GPSAM",
+  "Hungria"       = "HUNPRINTO01GPSAM",
+  "Rep_Tcheca"    = "CZEPRINTO01GPSAM",
+
+  # Grupo 3: Economias industriais avançadas (sem crise soberana aguda em 2011-13)
+  "EUA"           = "USAPRINTO01GPSAM",
+  "Alemanha"      = "DEUPRINTO01GPSAM",
+  "Austria"       = "AUTPRINTO01GPSAM",
+  "Belgica"       = "BELPRINTO01GPSAM",
+  "Franca"        = "FRAPRINTO01GPSAM",
+  "Reino_Unido"   = "GBRPRINTO01GPSAM",
+  "Finlandia"     = "FINPRMNTO01GPSAM",
+  "Japao"         = "JPNPRINTO01GPSAM"
 )
 
 painel_bruto <- map_dfr(
   paises_ids,
-  ~ fredr(series_id = .x, observation_start = as.Date("2002-01-01")),
+  ~ fredr(
+    series_id         = .x,
+    observation_start = data_ini,
+    observation_end   = data_fim
+  ),
   .id = "pais"
-)
+) %>%
+  filter(!is.na(value))
 
-datas <- seq(as.Date("2002-01-01"), as.Date("2019-12-01"), by = "month")
+# Checagem de cobertura e balanceamento
+datas <- seq(data_ini, data_fim, by = "month")
 
-checagem_cobertura <- painel_bruto %>%
-  filter(date <= as.Date("2019-12-01")) %>%
+cobertura <- painel_bruto %>%
   group_by(pais) %>%
-  summarise(
-    n_obs = n(),
-    data_min = min(date),
-    data_max = max(date),
-    n_esperado = length(datas),
-    datas_faltantes = list(setdiff(datas, date)),
-    .groups = "drop"
-  )
+  summarise(n_obs = n_distinct(date), .groups = "drop")
 
-paises_com_gap <- checagem_cobertura %>%
-  filter(lengths(datas_faltantes) > 0) %>%
+paises_com_gap <- cobertura %>%
+  filter(n_obs < length(datas)) %>%
   pull(pais)
 
+stopifnot("Brasil tem lacunas na série" = !"Brasil" %in% paises_com_gap)
+
 painel_preparado <- painel_bruto %>%
-  filter(date <= as.Date("2019-12-01")) %>%
   filter(!pais %in% paises_com_gap) %>%
   arrange(pais, date) %>%
   group_by(pais) %>%
   mutate(
-    mes_id = row_number(), 
-    base_jan2002 = value[date == as.Date("2002-01-01")], 
-    value_norm = (value / base_jan2002) * 100
+    mes_id       = id(date),
+    indice_bruto = 100 * cumprod(1 + value / 100),
+    # Reescalonamento pela média de todo o período pré-intervenção (Abadie, 2021)
+    base_pre     = mean(indice_bruto[mes_id <= t_pre], na.rm = TRUE),
+    value_norm   = 100 * indice_bruto / base_pre
   ) %>%
   ungroup() %>%
   drop_na(value_norm)
 
+stopifnot(
+  t_tratamento == 148,
+  n_distinct(painel_preparado$mes_id) == length(datas),
+  all(count(painel_preparado, pais)$n == length(datas))
+)
 
-
+n_distinct(painel_preparado$pais)
 ```
+
+## Exploração Visual do *Donor Pool*
 
 ```{r}
 #| message: false
 #| warning: false
 
-ggplot(painel_preparado, aes(x = date, y = value_norm, color = pais)) +
-  geom_line(alpha = 0.7, linewidth = 0.8) +
-  geom_vline(xintercept = as.Date("2014-12-01"), linetype = "dashed", color = "black") +
-  geom_hline(yintercept = 100, linetype = "dotted", color = "gray50") +
-  labs(
-    title = "Trajetória da Produção Industrial (Países Emergentes)",
-    subtitle = "Índice normalizado: Dezembro de 2014 = 100",
-    x = "Ano", y = "Índice (Dez/2014 = 100)", color = "País"
+ggplot(painel_preparado, aes(x = date, y = value_norm, group = pais)) +
+  geom_line(
+    data = filter(painel_preparado, pais != "Brasil"),
+    aes(color = "Doadores (Donor Pool)"),
+    alpha = 0.45, linewidth = 0.6
   ) +
-  theme_minimal()
-
+  geom_line(
+    data = filter(painel_preparado, pais == "Brasil"),
+    aes(color = "Brasil"),
+    linewidth = 1.1
+  ) +
+  geom_vline(xintercept = data_intervencao, linetype = "dashed", color = "black") +
+  geom_hline(yintercept = 100, linetype = "dotted", color = "gray50") +
+  scale_color_manual(values = c("Brasil" = "#b22222", "Doadores (Donor Pool)" = "steelblue")) +
+  labs(
+    title    = "Trajetória da Produção Industrial: Brasil vs. Donor Pool",
+    subtitle = "Índice reescalonado (média pré-intervenção Jan/2002–Mar/2014 = 100)",
+    x = "Ano", y = "Índice (média pré-tratamento = 100)", color = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")
 ```
+
+## Estimação do Controle Sintético
+
+Definimos seis janelas pré-intervenção não sobrepostas que capturam as diferentes fases do ciclo industrial global antes do choque doméstico de 2014:
+
+1. `2002–2004`: início do ciclo de expansão;
+2. `2005–2007`: auge do *boom* de commodities pré-crise;
+3. `2008–2009`: choque e vale da Crise Financeira Internacional (*Subprime*);
+4. `2010–2011`: recuperação cíclica pós-crise de 2008;
+5. `2012`: desaceleração industrial e maturação de estímulos;
+6. `2013–Mar/2014`: patamar imediatamente anterior à recessão datada pelo CODACE.
 
 ```{r}
 #| message: false
 #| warning: false
+
+j_2002_2004 <- id("2002-01-01"):id("2004-12-01")
+j_2005_2007 <- id("2005-01-01"):id("2007-12-01")
+j_2008_2009 <- id("2008-01-01"):id("2009-12-01")
+j_2010_2011 <- id("2010-01-01"):id("2011-12-01")
+j_2012      <- id("2012-01-01"):id("2012-12-01")
+j_2013_14T1 <- id("2013-01-01"):t_pre
 
 modelo_sintetico <- painel_preparado %>%
   synthetic_control(
-    outcome = value_norm,
-    unit = pais,
-    time = mes_id,
-    i_unit = "Brasil",
-    i_time = 156,
+    outcome           = value_norm,
+    unit              = pais,
+    time              = mes_id,
+    i_unit            = "Brasil",
+    i_time            = t_tratamento,
     generate_placebos = TRUE
   ) %>%
-  generate_predictor(
-    time_window = 1:80,
-    media_boom_pre_08 = mean(value_norm, na.rm = TRUE)
+  generate_predictor(time_window = j_2002_2004,
+                     media_2002_2004 = mean(value_norm, na.rm = TRUE)) %>%
+  generate_predictor(time_window = j_2005_2007,
+                     media_2005_2007 = mean(value_norm, na.rm = TRUE)) %>%
+  generate_predictor(time_window = j_2008_2009,
+                     media_2008_2009 = mean(value_norm, na.rm = TRUE)) %>%
+  generate_predictor(time_window = j_2010_2011,
+                     media_2010_2011 = mean(value_norm, na.rm = TRUE)) %>%
+  generate_predictor(time_window = j_2012,
+                     media_2012 = mean(value_norm, na.rm = TRUE)) %>%
+  generate_predictor(time_window = j_2013_14T1,
+                     media_2013_14T1 = mean(value_norm, na.rm = TRUE)) %>%
+  generate_weights(
+    optimization_window = 1:t_pre,
+    margin_ipop = 0.01,
+    sigf_ipop   = 5,
+    bound_ipop  = 6
   ) %>%
-  generate_predictor(
-    time_window = 81:92,
-    media_choque_08 = mean(value_norm, na.rm = TRUE)
-  ) %>%
-  generate_predictor(
-    time_window = 93:156,
-    media_recuperacao = mean(value_norm, na.rm = TRUE)
-  ) %>%
-  generate_weights(optimization_window = 1:156) %>%
   generate_control()
+```
+
+## Diagnóstico do Ajuste Pré-Intervenção
+
+Avaliamos a qualidade do contrafactual no período pré-tratamento verificando: (i) a tabela de balanço dos preditores ($\mathbf{X}_1$ vs. $\mathbf{X}_0 \mathbf{W}^*$), (ii) o $\text{RMSPE}_{\text{pré}}$ global e nos últimos 24 meses antes do choque, e (iii) a ausência de viés sistemático pré-intervenção.
+
+```{r}
+#| message: false
+#| warning: false
+
+knitr::kable(
+  modelo_sintetico %>%
+    grab_balance_table() %>%
+    mutate(across(where(is.numeric), ~ round(.x, 2))),
+  col.names = c("Janela / Preditor", "Brasil Real", "Brasil Sintético", "Média Simples (Doadores)"),
+  caption   = "Balanço dos Preditores no Período Pré-Intervenção (Jan/2002–Mar/2014)"
+)
+
+diagnostico_pre <- modelo_sintetico %>%
+  grab_synthetic_control() %>%
+  filter(time_unit <= t_pre) %>%
+  summarise(
+    RMSPE_Pre_Total      = round(sqrt(mean((real_y - synth_y)^2)), 2),
+    RMSPE_Ultimos_24m    = round(sqrt(mean((real_y[time_unit > t_pre - 24] - synth_y[time_unit > t_pre - 24])^2)), 2),
+    Vies_Medio_Pre_Total = round(mean(real_y - synth_y), 3),
+    Vies_Ultimos_24m     = round(mean(real_y[time_unit > t_pre - 24] - synth_y[time_unit > t_pre - 24]), 3)
+  )
+
+knitr::kable(
+  diagnostico_pre,
+  caption = "Métricas de Qualidade do Ajuste Pré-Intervenção"
+)
+```
+
+## Trajetória: Brasil Real vs. Brasil Sintético
+
+```{r}
+#| message: false
+#| warning: false
 
 grafico_trajetoria <- modelo_sintetico %>%
   plot_trends() +
+  scale_linetype_manual(values = c("solid", "solid")) +
   labs(
-    title = "Produção Industrial: Brasil Real vs. Brasil Sintético",
-    subtitle = "Intervenção estrutural em Dezembro de 2014",
-    x = "Meses desde Jan/2002",
-    y = "Índice (Dez 2014 = 100)"
+    title    = "Produção Industrial: Brasil Real vs. Brasil Sintético",
+    subtitle = "Intervenção em Abr/2014 (Início da Recessão segundo o CODACE/FGV = mês 148)",
+    x = "Meses desde Jan/2002 (Abr/2014 = mês 148)",
+    y = "Índice (média pré-intervenção = 100)"
   ) +
   theme_minimal()
 
 grafico_trajetoria
-
 ```
 
+## Pesos das Unidades Doadoras e dos Preditores
 
 ```{r}
 #| message: false
@@ -155,9 +272,20 @@ pesos_doadores <- modelo_sintetico %>%
   select(País = unit, Peso = weight) %>%
   mutate(Peso = round(Peso, 4))
 
-pesos_doadores
+knitr::kable(pesos_doadores, caption = "Pesos Atribuídos às Unidades Doadoras (W*)")
 
+pesos_preditores <- modelo_sintetico %>%
+  grab_predictor_weights() %>%
+  arrange(desc(weight)) %>%
+  select(Preditor = variable, Peso_V = weight) %>%
+  mutate(Peso_V = round(Peso_V, 4))
+
+knitr::kable(pesos_preditores, caption = "Importância Relativa dos Preditores (Matriz V)")
 ```
+
+## Impacto Estimado
+
+O efeito causal estimado em cada mês pós-intervenção é dado por $\hat{\tau}_{1t} = Y_{1t} - \hat{Y}^{N}_{1t}$. Valores negativos medem a perda em pontos do índice (onde 100 equivale ao nível médio pré-crise).
 
 ```{r}
 #| warning: false
@@ -165,13 +293,211 @@ pesos_doadores
 
 tabela_impacto <- modelo_sintetico %>%
   grab_synthetic_control() %>%
-  filter(time_unit > 156) %>%
+  filter(time_unit >= t_tratamento) %>%
+  mutate(gap = real_y - synth_y, gap_pct = 100 * (real_y / synth_y - 1)) %>%
   summarise(
-    Meses_Avaliados = n(),
-    Perda_Media_Mensal_Pontos = mean(real_y - synth_y),
-    Perda_Acumulada_Pontos = sum(real_y - synth_y)
+    Meses_Avaliados        = n(),
+    Gap_Medio_Pontos       = round(mean(gap), 2),
+    Perda_Relativa_Media_Pct = round(mean(gap_pct), 2),
+    Gap_Minimo_Vale        = round(min(gap), 2),
+    Gap_Acumulado_Pontos   = round(sum(gap), 2)
   )
 
-tabela_impacto 
+knitr::kable(tabela_impacto, caption = "Resumo do Impacto Causal Estimado (Abr/2014–Dez/2019)")
+```
 
+## Inferência e Testes de Robustez (Abadie, 2021)
+
+Seguindo Abadie (2021, Seção 4), submetemos a estimativa aos três testes canônicos de validação:
+
+### 1. Placebos no Espaço (*In-Space Placebos*) e Razão de MSPE
+
+```{r}
+#| warning: false
+#| message: false
+
+modelo_sintetico %>%
+  plot_placebos() +
+  labs(
+    title    = "Placebos no Espaço: Hiato Estimado (Real - Sintético)",
+    subtitle = "Comparação do efeito no Brasil frente aos placebos reatribuídos aos doadores",
+    x = "Meses desde Jan/2002 (Abr/2014 = mês 148)",
+    y = "Gap (Real - Sintético)"
+  ) +
+  theme_minimal()
+
+modelo_sintetico %>%
+  plot_mspe_ratio() +
+  labs(
+    title = "Razão MSPE Pós-Intervenção / Pré-Intervenção",
+    x = "Unidade", y = "Razão MSPE (Pós / Pré)"
+  ) +
+  theme_minimal()
+
+tabela_sig <- modelo_sintetico %>%
+  grab_significance() %>%
+  mutate(across(where(is.numeric), ~ round(.x, 4)))
+
+knitr::kable(tabela_sig, caption = "Teste de Permutação Exacta de Fisher (Amostra Completa)")
+
+# Filtro de qualidade pré-intervenção (Abadie, 2021): descarta placebos com MSPE pré > 5x o do Brasil
+mspe_bra_pre <- tabela_sig %>% filter(unit_name == "Brasil") %>% pull(pre_mspe)
+
+tabela_sig_filtrada <- tabela_sig %>%
+  filter(pre_mspe <= 5 * mspe_bra_pre) %>%
+  mutate(
+    rank_filtrado = row_number(),
+    p_valor_filtrado = round(rank_filtrado / n(), 4)
+  ) %>%
+  select(unit_name, type, pre_mspe, post_mspe, mspe_ratio, rank_filtrado, p_valor_filtrado)
+
+knitr::kable(
+  tabela_sig_filtrada,
+  caption = "Inferência Restrita a Unidades com Ajuste Pré-Tratamento Comparável (MSPE Pré <= 5x Brasil)"
+)
+```
+
+### 2. Placebo no Tempo (*In-Time Placebo / Backdating*)
+
+Antecipamos artificialmente a data da intervenção em mais de dois anos, para **Janeiro de 2012** (`mes_id = 121`), usando apenas dados até Dezembro de 2011 para estimar os pesos e avaliando o ajuste "fora da amostra" entre Janeiro de 2012 e Março de 2014. A ausência de descolamento expressivo antes de Abril de 2014 confirma que o hiato estimado após 2014 não decorre de falha preditiva ou tendência prévia divergente.
+
+```{r}
+#| warning: false
+#| message: false
+
+t_placebo_tempo <- id("2012-01-01")
+t_pre_placebo   <- t_placebo_tempo - 1
+j_2010_2011_pl  <- id("2010-01-01"):t_pre_placebo
+
+modelo_placebo_tempo <- painel_preparado %>%
+  synthetic_control(
+    outcome           = value_norm,
+    unit              = pais,
+    time              = mes_id,
+    i_unit            = "Brasil",
+    i_time            = t_placebo_tempo,
+    generate_placebos = FALSE
+  ) %>%
+  generate_predictor(time_window = j_2002_2004,
+                     media_2002_2004 = mean(value_norm, na.rm = TRUE)) %>%
+  generate_predictor(time_window = j_2005_2007,
+                     media_2005_2007 = mean(value_norm, na.rm = TRUE)) %>%
+  generate_predictor(time_window = j_2008_2009,
+                     media_2008_2009 = mean(value_norm, na.rm = TRUE)) %>%
+  generate_predictor(time_window = j_2010_2011_pl,
+                     media_2010_2011 = mean(value_norm, na.rm = TRUE)) %>%
+  generate_weights(optimization_window = 1:t_pre_placebo) %>%
+  generate_control()
+
+modelo_placebo_tempo %>%
+  grab_synthetic_control() %>%
+  mutate(data = data_ini %m+% months(time_unit - 1)) %>%
+  pivot_longer(cols = c(real_y, synth_y), names_to = "serie", values_to = "valor") %>%
+  mutate(serie = recode(serie, "real_y" = "Brasil Real", "synth_y" = "Brasil Sintético (Treinado até Dez/2011)")) %>%
+  ggplot(aes(x = data, y = valor, color = serie, linetype = serie)) +
+  geom_line(linewidth = 0.9) +
+  geom_vline(xintercept = as.Date("2012-01-01"), linetype = "dotted", color = "darkgreen", linewidth = 0.8) +
+  geom_vline(xintercept = data_intervencao, linetype = "dashed", color = "black", linewidth = 0.8) +
+  scale_color_manual(values = c("Brasil Real" = "#b22222", "Brasil Sintético (Treinado até Dez/2011)" = "#1f77b4")) +
+  scale_linetype_manual(values = c("solid", "dashed")) +
+  labs(
+    title    = "Placebo no Tempo (Backdating para Jan/2012)",
+    subtitle = "Linha pontilhada verde: placebo (Jan/2012) | Linha tracejada preta: choque real (Abr/2014)",
+    x = "Ano", y = "Índice (média pré-intervenção = 100)", color = NULL, linetype = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")
+```
+
+### 3. Sensibilidade *Leave-One-Out* (LOO)
+
+Reestimamos o controle sintético removendo iterativamente, uma a uma, cada unidade doadora com peso positivo relevante ($w_j > 0{,}01$), verificando se a trajetória contrafactual e a perda estimada dependem de um único país específico.
+
+```{r}
+#| warning: false
+#| message: false
+
+doadores_positivos <- modelo_sintetico %>%
+  grab_unit_weights() %>%
+  filter(weight > 0.01) %>%
+  pull(unit)
+
+resultados_loo <- map_dfr(doadores_positivos, function(doador_removido) {
+  mod_loo <- painel_preparado %>%
+    filter(pais != doador_removido) %>%
+    synthetic_control(
+      outcome           = value_norm,
+      unit              = pais,
+      time              = mes_id,
+      i_unit            = "Brasil",
+      i_time            = t_tratamento,
+      generate_placebos = FALSE
+    ) %>%
+    generate_predictor(time_window = j_2002_2004,
+                       media_2002_2004 = mean(value_norm, na.rm = TRUE)) %>%
+    generate_predictor(time_window = j_2005_2007,
+                       media_2005_2007 = mean(value_norm, na.rm = TRUE)) %>%
+    generate_predictor(time_window = j_2008_2009,
+                       media_2008_2009 = mean(value_norm, na.rm = TRUE)) %>%
+    generate_predictor(time_window = j_2010_2011,
+                       media_2010_2011 = mean(value_norm, na.rm = TRUE)) %>%
+    generate_predictor(time_window = j_2012,
+                       media_2012 = mean(value_norm, na.rm = TRUE)) %>%
+    generate_predictor(time_window = j_2013_14T1,
+                       media_2013_14T1 = mean(value_norm, na.rm = TRUE)) %>%
+    generate_weights(optimization_window = 1:t_pre) %>%
+    generate_control()
+
+   mod_loo %>%
+    grab_synthetic_control() %>%
+    mutate(doador_excluido = paste0("Sem ", doador_removido))
+})
+
+ serie_principal <- modelo_sintetico %>%
+  grab_synthetic_control() %>%
+  mutate(data = data_ini %m+% months(time_unit - 1))
+
+resultados_loo <- resultados_loo %>%
+  mutate(data = data_ini %m+% months(time_unit - 1))
+
+ggplot() +
+  geom_line(
+    data = resultados_loo,
+    aes(x = data, y = synth_y, group = doador_excluido, color = "Contrafactuais Leave-One-Out"),
+    linewidth = 0.7, alpha = 0.7
+  ) +
+  geom_line(
+    data = serie_principal,
+    aes(x = data, y = synth_y, color = "Brasil Sintético (Principal)"),
+    linewidth = 1.0, linetype = "dashed"
+  ) +
+  geom_line(
+    data = serie_principal,
+    aes(x = data, y = real_y, color = "Brasil Real"),
+    linewidth = 1.0
+  ) +
+  geom_vline(xintercept = data_intervencao, linetype = "dashed", color = "black") +
+  scale_color_manual(values = c(
+    "Brasil Real"                   = "#b22222",
+    "Brasil Sintético (Principal)"  = "#1f77b4",
+    "Contrafactuais Leave-One-Out"  = "gray60"
+  )) +
+  labs(
+    title    = "Teste de Robustez Leave-One-Out (LOO)",
+    subtitle = "Trajetória sintética reestimada excluindo cada doador ativo um por vez",
+    x = "Ano", y = "Índice (média pré-intervenção = 100)", color = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+resumo_loo <- resultados_loo %>%
+  group_by(Modelo = doador_excluido) %>%
+  summarise(
+    RMSPE_Pre        = round(sqrt(mean((real_y[time_unit <= t_pre] - synth_y[time_unit <= t_pre])^2)), 2),
+    Gap_Medio_Pos    = round(mean(real_y[time_unit >= t_tratamento] - synth_y[time_unit >= t_tratamento]), 2),
+    Gap_Acumulado_Pos = round(sum(real_y[time_unit >= t_tratamento] - synth_y[time_unit >= t_tratamento]), 2),
+    .groups = "drop"
+  )
+
+knitr::kable(resumo_loo, caption = "Estabilidade das Estimativas sob Exclusão Individual de Doadores (Leave-One-Out)")
 ```

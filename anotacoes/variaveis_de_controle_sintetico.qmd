@@ -1,0 +1,706 @@
+---
+title: "Guia Prático: Método de Controle Sintético"
+subtitle: "Fundamentos econométricos, requisitos de viabilidade e implementação passo a passo com base em Abadie (2021)"
+author: "João Vitor Vasconcelos Lima"
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-title: "Sumário"
+    toc-depth: 3
+    number-sections: true
+    code-fold: false
+lang: pt-BR
+---
+
+# Introdução e Motivação: O Problema da Avaliação de Políticas Agregadas
+
+Na econometria aplicada e na estatística, frequentemente desejamos responder a perguntas causais sobre **intervenções agregadas** — isto é, choques econômicos, reformas institucionais ou políticas públicas que afetam uma única unidade macroeconômica (ou um número muito pequeno de unidades), como um país, um estado, uma região metropolitana ou um setor industrial inteiro. Exemplos clássicos incluem:
+
+- Qual foi o impacto da reunificação alemã de 1990 sobre o PIB *per capita* da Alemanha Ocidental (Abadie, Diamond e Hainmueller, 2015)?
+- Qual foi o efeito do programa de controle de tabaco da Califórnia (*Proposition 99*, de 1988) sobre o consumo de cigarros (Abadie, Diamond e Hainmueller, 2010)?
+- Qual foi o custo econômico do conflito terrorista no País Basco (Abadie e Gardeazabal, 2003) ou da crise recessiva de 2014 sobre a produção industrial brasileira?
+
+Em uma revisão sobre o estado da econometria aplicada, Athey e Imbens (2017) descreveram o **Método de Controle Sintético** como *"arguably the most important innovation in the policy evaluation literature in the last 15 years"*. Para compreender por que o método se tornou tão central, convém entender por que as abordagens tradicionais falham nesse tipo de problema:
+
+1. **Regressões transversais ou em painel com muitas unidades tratadas:** Exigem amostras grandes e múltiplas ocorrências independentes do evento de interesse. São inadequadas quando o "tratamento" é um evento único ou raro (tamanho amostral de tratados $N_{\text{trat}} = 1$).
+2. **Séries temporais interrompidas (análise de uma única unidade no tempo):** Funcionam bem para detectar efeitos imediatos de grande magnitude no curtíssimo prazo, mas falham na estimação de efeitos de médio e longo prazo. Isso ocorre porque outros choques macroeconômicos globais ou setoriais atingem a unidade após a intervenção, tornando impossível separar o efeito da política da tendência ou de novos ciclos sem um grupo de controle.
+3. **Estudos de caso comparativos tradicionais e Diferenças-em-Diferenças (DiD):** Comparam a evolução da unidade tratada com a de uma unidade (ou média simples de unidades) não afetada — como Card (1990), que comparou o mercado de trabalho de Miami após o *Mariel Boatlift* com a média de quatro outras cidades americanas, ou Card e Krueger (1994), que compararam Nova Jersey com a Pensilvânia. Essa abordagem sofre de duas limitações graves:
+   - **Seleção subjetiva e informal:** A escolha de qual país ou estado serve de controle baseia-se em argumentos qualitativos de "afinidade", sem critério estatístico formalizado.
+   - **Falta de um par único adequado e violação de tendências paralelas:** Quando trabalhamos com países ou estados, raramente uma única unidade não tratada (ou a média simples de todas) reproduz fielmente a trajetória e as características estruturais da unidade tratada antes da intervenção.
+
+::: {.callout-note}
+## A Ideia Central do Controle Sintético
+Quando as unidades de observação são poucas entidades agregadas, **uma combinação ponderada (convexa) de unidades não afetadas frequentemente proporciona uma aproximação muito mais fiel da unidade tratada do que qualquer unidade isolada**. Ao formalizar a escolha desses pesos por meio de um procedimento matemático guiado por dados, o Controle Sintético torna transparente a construção do contrafactual e viabiliza uma forma rigorosa de inferência quantitativa por permutação.
+:::
+
+---
+
+# Formalização Matemática e Mecânica do Estimador {#sec-mecanica}
+
+## Estrutura de Dados em Painel e Resultados Potenciais
+
+Seguindo a notação de Abadie (2021, Seção 3.1), suponha que observamos dados em painel balanceado para $J + 1$ unidades indexadas por $j = 1, 2, \dots, J + 1$ ao longo de $T$ períodos de tempo, $t = 1, 2, \dots, T$:
+
+- **Unidade tratada ($j = 1$):** Sem perda de generalidade, a primeira unidade é aquela que sofre a intervenção de interesse.
+- **Grupo de doadores (*Donor Pool*, $j = 2, \dots, J + 1$):** Coleção de $J$ unidades potenciais de comparação que **não** sofreram a intervenção.
+- **Períodos pré-intervenção ($t = 1, \dots, T_0$):** Os primeiros $T_0$ períodos nos quais nenhuma unidade está sob efeito do tratamento.
+- **Períodos pós-intervenção ($t = T_0 + 1, \dots, T$):** Os $T - T_0$ períodos subsequentes à implementação da política ou choque na unidade $j = 1$.
+
+Adotando o arcabouço de resultados potenciais de Rubin (1974), definimos para cada unidade $j$ e período $t$:
+
+- $Y^N_{jt}$: o resultado potencial que seria observado na unidade $j$ e instante $t$ **na ausência da intervenção** (*No intervention*);
+- $Y^I_{1t}$: o resultado potencial da unidade tratada ($j=1$) no período pós-intervenção ($t > T_0$) **sob a intervenção** (*Intervention*).
+
+O efeito causal da intervenção sobre a unidade tratada em cada período pós-tratamento $t > T_0$ é definido por:
+
+$$\tau_{1t} = Y^I_{1t} - Y^N_{1t}. \qquad (1)$$
+
+Como a unidade $1$ é efetivamente exposta à intervenção após $T_0$, observamos diretamente $Y_{1t} = Y^I_{1t}$ para todo $t > T_0$. Já para as unidades do *donor pool* ($j = 2, \dots, J+1$), observamos $Y_{jt} = Y^N_{jt}$ em todos os períodos. Portanto, **o grande desafio da avaliação causal reduz-se a estimar o contrafactual não observável $Y^N_{1t}$ para $t > T_0$**: como a variável de interesse da unidade $1$ teria evoluído caso o choque não tivesse ocorrido.
+
+::: {.callout-tip}
+## Efeitos Dinâmicos no Tempo
+Note que a equação $(1)$ indexa o efeito $\tau_{1t}$ pelo tempo $t$. Ao contrário de regressões em painel estáticas que impõem um efeito constante ($\tau_{1t} = \tau$), o Controle Sintético permite naturalmente que o efeito da intervenção acumule gradualmente, atinja um pico ou se dissipe à medida que o tempo avança.
+:::
+
+## Vetores de Preditores e o Estimador de Controle Sintético
+
+Para construir o contrafactual, observamos para cada unidade $j$ um conjunto de $k$ preditores da variável de resultado, $(X_{1j}, \dots, X_{kj})'$. Esses preditores podem incluir:
+
+1. Valores pré-intervenção (ou médias por subperíodos pré-intervenção) da própria variável de resultado $Y_{jt}$;
+2. Covariáveis estruturais exógenas (como taxa de investimento, abertura comercial, escolaridade, inflação ou estrutura setorial) medidas antes da intervenção.
+
+Organizamos essas características em duas estruturas matriciais:
+
+- $\mathbf{X}_1$: vetor coluna $(k \times 1)$ contendo os valores dos $k$ preditores para a **unidade tratada** ($j=1$);
+- $\mathbf{X}_0 = [\mathbf{X}_2 \cdots \mathbf{X}_{J+1}]$: matriz $(k \times J)$ na qual cada coluna $\mathbf{X}_j$ reúne os mesmos $k$ preditores para a $j$-ésima unidade do *donor pool*.
+
+Um **controle sintético** é definido por um vetor de pesos $\mathbf{W} = (w_2, \dots, w_{J+1})'$ de dimensão $(J \times 1)$ que pondera as unidades do *donor pool*. Dado um vetor de pesos $\mathbf{W}$, os estimadores do contrafactual $\hat{Y}^N_{1t}$ e do efeito causal $\hat{\tau}_{1t}$ são:
+
+$$\hat{Y}^N_{1t} = \sum_{j=2}^{J+1} w_j Y_{jt}, \qquad \hat{\tau}_{1t} = Y_{1t} - \hat{Y}^N_{1t} = Y_{1t} - \sum_{j=2}^{J+1} w_j Y_{jt}, \qquad (2)$$
+
+sujeito às duas **restrições de combinação convexa**:
+
+$$w_j \ge 0 \quad (\forall j \in \{2, \dots, J+1\}) \qquad \text{e} \qquad \sum_{j=2}^{J+1} w_j = 1. \qquad (3)$$
+
+Para enxergar a generalidade da equação $(2)$, observe como estimadores intuitivos são casos particulares de $\mathbf{W}$:
+
+- **Média simples dos doadores:** $w_j = 1/J$ para todo $j$, resultando em $\hat{\tau}_{1t} = Y_{1t} - \frac{1}{J}\sum_{j=2}^{J+1} Y_{jt}$ (que falha se a média simples não acompanhar a unidade tratada no pré-tratamento, como ocorre no exemplo da Alemanha na Figura 1A de Abadie, 2021).
+- **Média ponderada pela população:** $w_j = w_j^{\text{pop}}$, onde $w_j^{\text{pop}}$ é a fração populacional da unidade $j$ no *donor pool*.
+- **Pareamento por vizinho mais próximo (*nearest neighbor*):** escolhe-se uma única unidade $m = \arg\min_j \|\mathbf{X}_1 - \mathbf{X}_j\|$, impondo $w_m = 1$ e $w_j = 0$ para $j \neq m$.
+
+## Como Escolher os Pesos $\mathbf{W}^*$ e $\mathbf{V}^*$ na Prática?
+
+Em vez de fixar pesos arbitrários, Abadie e Gardeazabal (2003) e Abadie, Diamond e Hainmueller (2010) propõem escolher $\mathbf{W}^* = (w_2^*, \dots, w_{J+1}^*)'$ de modo que o controle sintético reproduza o mais fielmente possível as características pré-intervenção da unidade tratada.
+
+Dadas constantes não negativas $v_1, \dots, v_k$ (que medem a importância relativa de cada um dos $k$ preditores), escolhemos $\mathbf{W}^*(\mathbf{V})$ resolvendo um problema de **otimização quadrática restrita**:
+
+$$\mathbf{W}^*(\mathbf{V}) = \arg\min_{\mathbf{W}} \|\mathbf{X}_1 - \mathbf{X}_0 \mathbf{W}\|_{\mathbf{V}} = \left( \sum_{h=1}^k v_h \left( X_{h1} - w_2 X_{h2} - \dots - w_{J+1} X_{h,J+1} \right)^2 \right)^{1/2}, \qquad (4)$$
+
+sujeito a $w_j \ge 0$ e $\sum_{j=2}^{J+1} w_j = 1$.
+
+Resta, contudo, a pergunta fundamental: **como escolher a matriz diagonal de pesos dos preditores $\mathbf{V} = \text{diag}(v_1, \dots, v_k)$?** O papel de $v_h$ é refletir o poder preditivo da característica $X_{h1}$ sobre a trajetória contrafactual $Y^N_{1t}$. Abadie (2021, Seção 3.2) destaca três abordagens:
+
+1. **Inverso da variância amostral:** Definir $v_h = \text{Var}(X_{h1}, \dots, X_{h,J+1})^{-1}$, o que equivale a padronizar todas as linhas da matriz $[\mathbf{X}_1 : \mathbf{X}_0]$ para que tenham variância unitária (dando igual importância *a priori* a cada preditor padronizado).
+2. **Minimização do Erro Quadrático Médio de Previsão (MSPE) pré-intervenção (padrão no `Synth` e `tidysynth`):** Escolher $\mathbf{V}^*$ de forma aninhada (*bilevel optimization*) para que o vetor resultante $\mathbf{W}(\mathbf{V}^*)$ minimize o erro quadrático médio da variável de resultado ao longo de um subconjunto $\mathcal{T}_0 \subseteq \{1, \dots, T_0\}$ de períodos pré-intervenção:
+   $$\mathbf{V}^* = \arg\min_{\mathbf{V} \in \mathcal{V}} \sum_{t \in \mathcal{T}_0} \left( Y_{1t} - \sum_{j=2}^{J+1} w_j(\mathbf{V}) Y_{jt} \right)^2. \qquad (5)$$
+3. **Validação Fora da Amostra (*Out-of-Sample Validation* — Abadie, Diamond e Hainmueller, 2015):** Divide-se o período pré-intervenção $\{1, \dots, T_0\}$ em duas metades (por exemplo, um **período de treino** $t = 1, \dots, t_0$ e um **período de validação** $t = t_0 + 1, \dots, T_0$):
+   - *Passo 1:* Para cada candidato $\mathbf{V}$, calculam-se os pesos $\tilde{\mathbf{W}}(\mathbf{V})$ usando os preditores medidos apenas no período de treino.
+   - *Passo 2:* Avalia-se a capacidade de $\tilde{\mathbf{W}}(\mathbf{V})$ prever $Y_{1t}$ no período de validação:
+     $$\text{MSPE}_{\text{val}}(\mathbf{V}) = \sum_{t=t_0+1}^{T_0} \left( Y_{1t} - \sum_{j=2}^{J+1} \tilde{w}_j(\mathbf{V}) Y_{jt} \right)^2.$$
+   - *Passo 3:* Seleciona-se $\mathbf{V}^*$ que minimiza $\text{MSPE}_{\text{val}}(\mathbf{V})$.
+   - *Passo 4:* Com $\mathbf{V}^*$ fixado, calculam-se os pesos finais $\mathbf{W}^* = \mathbf{W}(\mathbf{V}^*)$ usando os preditores da janela imediatamente anterior à intervenção ($t = t_0 + 1, \dots, T_0$).
+
+---
+
+# Teoria Econométrica: O Modelo de Fatores Lineares e a Cota de Viés {#sec-teoria}
+
+Uma dúvida recorrente entre estudantes de estatística e economia é: **sob qual processo gerador de dados (PGD) o Controle Sintético é um estimador válido, e como ele se compara ao estimador de Diferenças-em-Diferenças (DiD)?**
+
+Abadie, Diamond e Hainmueller (2010) demonstram que o Controle Sintético é não-viesado se os dados seguirem um modelo auto-regressivo vetorial (VAR) e derivam uma **cota superior para o viés** quando o resultado potencial sem intervenção $Y^N_{jt}$ é gerado por um **Modelo de Fatores Lineares com Efeitos Fixos Interativos** (Bai, 2009):
+
+$$Y^N_{jt} = \delta_t + \boldsymbol{\theta}_t \mathbf{Z}_j + \boldsymbol{\lambda}_t \boldsymbol{\mu}_j + \varepsilon_{jt}. \qquad (6)$$
+
+Vamos destrinchar cada componente da equação $(6)$:
+
+- $\delta_t$: tendência temporal macroeconômica comum a todas as unidades (fator comum com carga constante igual a 1);
+- $\mathbf{Z}_j$: vetor $(r \times 1)$ de **covariáveis observadas** da unidade $j$ (não afetadas pelo tratamento), cujo impacto no tempo varia segundo o vetor de parâmetros $\boldsymbol{\theta}_t$ $(1 \times r)$;
+- $\boldsymbol{\mu}_j$: vetor $(F \times 1)$ de **características estruturais não observadas** (*cargas fatoriais latentes*, ou *factor loadings*) específicas da unidade $j$;
+- $\boldsymbol{\lambda}_t$: vetor $(1 \times F)$ de **fatores comuns não observados variantes no tempo** (choques globais, ciclos tecnológicos, ciclos de preços internacionais);
+- $\varepsilon_{jt}$: choque transitório idiossincrático (específico da unidade $j$ no instante $t$), com $\mathbb{E}[\varepsilon_{jt}] = 0$.
+
+::: {.callout-important}
+## Por que o Controle Sintético generaliza o Diferenças-em-Diferenças (DiD)?
+No modelo tradicional de Diferenças-em-Diferenças (ou painel com efeitos fixos aditivos de unidade e tempo), impõe-se a restrição de que os fatores não observados têm efeito constante no tempo: $\boldsymbol{\lambda}_t = \boldsymbol{\lambda}$ para todo $t$. Sob essa restrição, unidades com as mesmas covariáveis observadas ($\mathbf{Z}_j = \mathbf{z}$) seguem obrigatoriamente **tendências paralelas** ($\delta_t + \boldsymbol{\theta}_t \mathbf{z} + \boldsymbol{\lambda}\boldsymbol{\mu}_j$).
+
+O modelo de fatores lineares da equação $(6)$ **relaxa a hipótese de tendências paralelas**: diferentes unidades podem responder com intensidades distintas ($\boldsymbol{\mu}_j$) aos mesmos choques macroeconômicos ($\boldsymbol{\lambda}_t$). Por exemplo, uma crise financeira global ($\lambda_t$) afeta o produto industrial do Brasil ($\mu_{\text{Brasil}}$) de forma diferente do que afeta a Suíça ($\mu_{\text{Suíça}}$).
+:::
+
+## A Intuição Algébrica da Cota de Viés (*Bias Bound*)
+
+Tomando a diferença entre $Y^N_{1t}$ e o controle sintético $\sum_{j=2}^{J+1} w_j Y^N_{jt}$ sob a equação $(6)$, obtemos o erro de aproximação do contrafactual:
+
+$$Y^N_{1t} - \sum_{j=2}^{J+1} w_j Y^N_{jt} = \boldsymbol{\theta}_t \underbrace{\left( \mathbf{Z}_1 - \sum_{j=2}^{J+1} w_j \mathbf{Z}_j \right)}_{\text{Discrepância observada}} + \boldsymbol{\lambda}_t \underbrace{\left( \boldsymbol{\mu}_1 - \sum_{j=2}^{J+1} w_j \boldsymbol{\mu}_j \right)}_{\text{Discrepância latente}} + \sum_{j=2}^{J+1} w_j (\varepsilon_{1t} - \varepsilon_{jt}). \qquad (7)$$
+
+Observe o que a equação $(7)$ revela:
+
+1. Se escolhermos pesos $\mathbf{W}^*$ que reproduzam perfeitamente tanto as características observadas ($\mathbf{Z}_1 = \sum_j w_j^* \mathbf{Z}_j$) quanto as cargas fatoriais latentes ($\boldsymbol{\mu}_1 = \sum_j w_j^* \boldsymbol{\mu}_j$), os dois primeiros termos desaparecem e o estimador é **exatamente não-viesado**!
+2. Contudo, $\boldsymbol{\mu}_1$ **não é observado**. Como podemos igualar algo que não vemos? A resposta de Abadie, Diamond e Hainmueller (2010) é brilhante: **um controle sintético que reproduz $\mathbf{Z}_1$ e acompanha a trajetória de $Y_{1t}$ durante um longo período pré-intervenção ($t = 1, \dots, T_0$) só consegue fazê-lo se também estiver igualando implicitamente $\boldsymbol{\mu}_1 \approx \sum_j w_j^* \boldsymbol{\mu}_j$!**
+3. A única maneira de o controle sintético igualar $Y_{1t}$ no pré-tratamento *sem* igualar $\boldsymbol{\mu}_1$ seria se os choques transitórios idiossincráticos $\varepsilon_{jt}$ compensassem exatamente a diferença estrutural $\boldsymbol{\lambda}_t(\boldsymbol{\mu}_1 - \sum_j w_j \boldsymbol{\mu}_j)$ período após período. Quando a escala dos choques transitórios ($\sigma_\varepsilon$) é pequena e o número de períodos pré-intervenção ($T_0$) é grande, a probabilidade dessa compensação espúria ocorrer converge para zero.
+
+A partir desse resultado, Abadie, Diamond e Hainmueller (2010) demonstram que a cota superior do viés de $\hat{\tau}_{1t}$ depende:
+
+- **Inversamente de $T_0$** (número de períodos pré-intervenção): sob bom ajuste ($\mathbf{X}_1 \approx \mathbf{X}_0 \mathbf{W}^*$), quanto mais longo o período em que o controle sintético rastreia a unidade tratada, menor o limite de viés.
+- **Positivamente da volatilidade dos choques transitórios ($\sigma_\varepsilon$):** muito ruído idiossincrático facilita o *over-fitting* (ajustar ruído em vez de sinal estrutural $\boldsymbol{\mu}_1$).
+- **Positivamente do tamanho do *donor pool* ($J$) quando $T_0$ é fixo:** com doadores demais e $T_0$ curto, torna-se fácil encontrar combinações espúrias que ajustam os dados pré-intervenção mesmo com grandes discrepâncias em $\boldsymbol{\mu}_j$.
+- **Positivamente da dimensão de $\boldsymbol{\mu}_j$ (número de fatores não observados):** quanto mais fatores não observados existirem, maior a cota de viés.
+
+::: {.callout-warning}
+## Duas Lições Fundamentais sobre Viés e Seleção de Variáveis
+1. **$T_0$ grande não corrige ajuste ruim:** A cota de viés converge com $1/T_0$ *condicionada a* $\mathbf{X}_1 \approx \mathbf{X}_0 \mathbf{W}^*$. Se o controle sintético não reproduz a trajetória pré-tratamento da unidade tratada, o viés permanece elevado mesmo quando $T_0 \to \infty$.
+2. **Por que não devemos omitir covariáveis $\mathbf{Z}_j$:** Na equação $(6)$, qualquer preditor observável excluído de $\mathbf{Z}_j$ é mecanicamente absorvido dentro do vetor não observado $\boldsymbol{\mu}_j$. Isso aumenta o número de componentes de $\boldsymbol{\mu}_j$ e, consequentemente, **eleva a cota de viés**. Portanto, incluir preditores estruturais relevantes além dos valores passados de $Y_{jt}$ reduz a variância residual e protege contra *over-fitting*.
+:::
+
+---
+
+# Vantagens do Controle Sintético Frente à Regressão Linear {#sec-vantagens}
+
+Abadie (2021, Seção 4) demonstra que um estimador de regressão linear baseado nos dados de painel também pode ser escrito como uma média ponderada das unidades do *donor pool*: $\hat{Y}^{\text{reg}}_{1t} = \mathbf{Y}_0 \mathbf{W}^{\text{reg}}$, onde $\mathbf{W}^{\text{reg}} = \bar{\mathbf{X}}_0'(\bar{\mathbf{X}}_0 \bar{\mathbf{X}}_0')^{-1}\bar{\mathbf{X}}_1$ e os pesos implícitos $\mathbf{W}^{\text{reg}}$ também somam 1. Qual é, então, a vantagem do Controle Sintético sobre a regressão?
+
+| Característica | Controle Sintético ($\mathbf{W}^*$) | Regressão Linear ($\mathbf{W}^{\text{reg}}$) |
+| :--- | :--- | :--- |
+| **Restrição nos pesos** | $w_j \ge 0$ e $\sum w_j = 1$ (combinação convexa) | $\sum w_j = 1$, mas $w_j \in (-\infty, +\infty)$ |
+| **Extrapolação** | **Impedida:** opera estritamente por interpolação dentro do suporte dos dados | **Permitida:** usa pesos negativos e $>1$ para extrapolar fora do suporte |
+| **Transparência do ajuste pré-tratamento** | **Alta:** expõe claramente a discrepância $\mathbf{X}_1 - \mathbf{X}_0 \mathbf{W}^*$ se a unidade tratada for extrema | **Oculta:** garante ajuste algébrico perfeito ($\bar{\mathbf{X}}_0 \mathbf{W}^{\text{reg}} = \bar{\mathbf{X}}_1$) mesmo entre unidades incomparáveis |
+| **Esparsidade** | **Esparso:** poucas unidades recebem peso $w_j^* > 0$ (no máximo $k$ preditores) | **Denso:** quase todas as $J$ unidades recebem pesos positivos ou negativos |
+| **Proteção contra *p-hacking*** | **Sim:** pesos calculados exclusivamente com dados pré-intervenção ($t \le T_0$) | **Não:** a estimação usual utiliza dados pós-tratamento simultaneamente |
+
+## A Geometria da Esparsidade (e a Diferença para o LASSO)
+
+Na aplicação da reunificação alemã (Abadie, Diamond e Hainmueller, 2015), de 16 países da OCDE no *donor pool*, apenas **5 países** recebem peso positivo no Controle Sintético: Áustria (42%), Estados Unidos (22%), Japão (16%), Suíça (11%) e Holanda (9%). Já a regressão linear atribui pesos não nulos a quase todos os 16 países, incluindo pesos negativos para Grécia (-9%), Portugal (-8%), Itália (-5%) e Espanha (-1%).
+
+Por que os pesos do Controle Sintético são naturalmente esparsos? A explicação é **geométrica**:
+
+```{mermaid}
+flowchart LR
+    A["Vetor da Unidade Tratada (X1)<br/>Fora da Envoltória Convexa"] -->|Projeção Ortogonal Ponderada por V| B["Face / Vértices da Envoltória Convexa<br/>das Colunas de X0"]
+    B --> C["Solução Única e Esparsa (W*)<br/>Máximo de k pesos positivos"]
+```
+
+Em dimensões moderadas ($k$ preditores), devido à maldição da dimensionalidade, o ponto $\mathbf{X}_1$ costuma cair ligeiramente fora da **envoltória convexa** (*convex hull*) formada pelos pontos $\{\mathbf{X}_2, \dots, \mathbf{X}_{J+1}\}$. A minimização de $\|\mathbf{X}_1 - \mathbf{X}_0 \mathbf{W}\|_{\mathbf{V}}$ sujeita a $w_j \ge 0$ e $\sum w_j = 1$ equivale a **projetar geometricamente o ponto $\mathbf{X}_1$ sobre a face mais próxima do politopo convexo gerado pelas colunas de $\mathbf{X}_0$**. Se as colunas de $\mathbf{X}_0$ estiverem em posição geral, essa projeção cai sobre uma face definida por **no máximo $k$ vértices**, garantindo que a solução $\mathbf{W}^*$ seja única e tenha no máximo $k$ pesos estritamente positivos!
+
+::: {.callout-note}
+## Esparsidade no Controle Sintético vs. LASSO
+No LASSO (regressão penalizada por norma $L_1$), a esparsidade é um artifício de regularização para evitar *over-fitting*, e a identidade individual das variáveis selecionadas raramente tem interpretação substantiva. No Controle Sintético, ocorre o oposto: **a identidade e a magnitude dos poucos doadores com peso positivo são informações cruciais** para que especialistas avaliem a plausibilidade do contrafactual e diagnostiquem a direção de eventuais vieses.
+:::
+
+---
+
+# Requisitos Práticos de Viabilidade: Contexto e Dados {#sec-requisitos}
+
+A mensagem central de Abadie (2021, Seções 5 e 6) é que aplicações mecânicas do método, sem atenção ao contexto econômico e à natureza estatística dos dados, produzem estimativas enganosas. Antes de estimar um Controle Sintético, o pesquisador deve verificar **seis requisitos fundamentais**:
+
+## 1. Magnitude do Efeito vs. Volatilidade Idiossincrática
+
+Estudos de caso comparativos focam em uma única unidade tratada; logo, não contamos com a Lei dos Grandes Números transversal para cancelar choques aleatórios na pós-intervenção.
+
+- Se o efeito verdadeiro $\tau_{1t}$ for pequeno em relação à volatilidade da série $Y_{1t}$, será impossível distingui-lo do ruído aleatório.
+- **Distinção crucial (Equação 6):** A volatilidade gerada por **fatores comuns** ($\boldsymbol{\lambda}_t$) que afetam todas as unidades é **neutralizada** pelo controle sintético. O problema reside exclusivamente na **volatilidade idiossincrática ($\varepsilon_{jt}$)** — aquela específica da unidade.
+- **Recomendação prática:** Quando a série mensal ou trimestral apresentar ruído idiossincrático elevado (alta variância de $\varepsilon_{jt}$), ela aumenta drasticamente o risco de *over-fitting* na janela pré-intervenção. Nesses casos, Abadie (2021) recomenda **filtrar ou suavizar o ruído** (por exemplo, via médias móveis, agregação trimestral, dessazonalização ou *Singular Value Thresholding* de Amjad, Shah e Shen, 2018) **tanto na unidade tratada quanto em todas as unidades do *donor pool*** antes de estimar o modelo.
+
+## 2. Regras de Ouro para Seleção do *Donor Pool* e Viés de Interpolação
+
+Um erro comum é incluir "todos os países ou estados disponíveis" no *donor pool* achando que o algoritmo descartará automaticamente as unidades inadequadas. Como vimos na Seção @sec-teoria, inflar $J$ com unidades estruturalmente díspares aumenta a cota de viés e cria **viés de interpolação**. Siga rigorosamente três critérios de depuração:
+
+1. **Excluir unidades que sofreram intervenções similares:** Qualquer unidade que tenha adotado uma política parecida ou sofrido o mesmo choque estrutural durante o período amostral $(1, \dots, T)$ deve ser removida do *donor pool*.
+2. **Excluir unidades atingidas por grandes choques idiossincráticos:** Se um país ou estado doador sofreu um choque severo específico (por exemplo, um colapso bancário local, uma guerra civil, um desastre natural extremo ou a Crise da Dívida Soberana Europeia na periferia do Euro em 2011–2013) que não teria afetado a unidade tratada na ausência da intervenção, ele deve ser retirado.
+3. **Restringir o *donor pool* a unidades com características semelhantes (Prevenção do Viés de Interpolação):** Mesmo que os pesos não extrapolem ($w_j \in [0,1]$), se o processo gerador de $Y^N_{jt}$ for não-linear nos atributos das unidades, o otimizador pode reproduzir a média da unidade tratada tirando a média entre dois extremos opostos (por exemplo, 50% de uma economia em hiper-crescimento e 50% de uma economia em depressão). Restringir o *donor pool* a pares estruturalmente comparáveis (ou usar o estimador penalizado de Abadie e L'Hour, 2021) evita esse viés de interpolação.
+
+## 3. Ausência de Antecipação (*No Anticipation*) e *Backdating*
+
+Se agentes econômicos *forward-looking* reagirem antes da promulgação oficial da política, ou se os primeiros sinais da crise/intervenção começarem antes da data formal, manter esses períodos de transição dentro de $1, \dots, T_0$ contaminará o cálculo dos pesos $\mathbf{W}^*$.
+
+- **Solução prática:** Ao menor sinal de antecipação, **retroaja a data da intervenção ($T_0$) no banco de dados** (*backdating*) para o último período claramente livre de efeitos de antecipação.
+- **Por que isso não enviesa o estimador?** Porque o Controle Sintético não impõe que $\tau_{1t}$ seja constante! Se você retroagir $T_0$ em alguns meses e o efeito ainda for nulo naquele intervalo inicial, o estimador simplesmente mostrará $\hat{\tau}_{1t} \approx 0$ nos meses de transição e capturará a totalidade do efeito quando ele emergir.
+
+## 4. Ausência de Interferência (*No Interference* / SUTVA e *Spillovers*)
+
+A hipótese de *Stable Unit Treatment Value Assumption* (SUTVA, Rubin, 1980) exige que o tratamento aplicado à unidade $j=1$ não afete os resultados $Y^N_{jt}$ das unidades do *donor pool* (*spillovers* ou efeitos de transbordamento).
+
+- **O dilema prático:** Unidades geograficamente próximas ou comercialmente integradas à unidade tratada costumam ser os melhores controles (pois compartilham os mesmos choques regionais $\boldsymbol{\lambda}_t$), mas são também as mais suscetíveis a *spillovers*.
+- **Como proceder:** Se o *spillover* for forte, pode-se excluir os vizinhos contaminados e verificar na tabela de balanço o quanto a qualidade do ajuste pré-tratamento ($\mathbf{X}_1 - \mathbf{X}_0 \mathbf{W}^*$) piora. Alternativamente, se mantivermos uma unidade vizinha no controle sintético, usamos a **esparsidade dos pesos** para determinar a direção do viés.
+  - *Exemplo (Reunificação Alemã):* A Áustria recebeu 42% do peso na Alemanha Sintética. Se a reunificação desviou investimentos da Áustria para a Alemanha Oriental (reduzindo o PIB austríaco), então o PIB da Alemanha Sintética caiu junto; logo, o efeito negativo estimado para a Alemanha Ocidental é um **limite inferior conservador** (em valor absoluto) do verdadeiro impacto negativo.
+
+## 5. A Condição da Envoltória Convexa e Transformações de Escala
+
+Para que $\mathbf{X}_1 - \mathbf{X}_0 \mathbf{W}^* \approx \mathbf{0}$, o vetor $\mathbf{X}_1$ precisa pertencer (ou estar muito próximo) à envoltória convexa de $\{\mathbf{X}_2, \dots, \mathbf{X}_{J+1}\}$.
+
+E se a unidade tratada for extrema no **nível** da variável de resultado $Y_{1t}$ (por exemplo, a maior ou a menor de toda a amostra), ou se as unidades tiverem tamanhos populacionais/industriais diferentes?
+
+1. **Reescalonamento prévio por tamanho:** Exigir que $\sum_{j=2}^{J+1} w_j = 1$ só faz sentido econômico se as variáveis forem intensivas (não escalarem com o porte da unidade, como PIB *per capita*, taxas, preços ou números-índice de base comum).
+2. **Desvios em relação à média pré-intervenção (Ferman e Pinto, 2021) ou Indexação pela Média Pré-Intervenção:** Quando há diferenças permanentes de nível entre as unidades no pré-tratamento, pode-se subtrair de cada unidade a sua própria média pré-intervenção:
+   $$\tilde{Y}_{jt} = Y_{jt} - \frac{1}{T_0} \sum_{h=1}^{T_0} Y_{jh}, \qquad \text{ou reescalonar por} \qquad \tilde{Y}^{\text{idx}}_{jt} = 100 \times \frac{Y_{jt}}{\frac{1}{T_0}\sum_{h=1}^{T_0} Y_{jh}}. \qquad (8)$$
+   Como destaca Abadie (2021, p. 411), medir o resultado em desvios (ou razão) em relação à média de **todo o período pré-intervenção** ($1, \dots, T_0$) elimina efeitos fixos de nível sem ancorar a série em um único ano arbitrário (que pode conter choques transitórios atípicos) e sem os problemas de escala do intercepto livre de Doudchenko e Imbens (2016) quando há múltiplas covariáveis.
+3. **Primeiras diferenças ($\Delta Y_{jt} = Y_{jt} - Y_{jt-1}$) ou taxas de crescimento ($100 \times \Delta Y_{jt}/Y_{jt-1}$):**
+   - *Vantagem:* Aplicando o operador diferença à equação $(6)$, obtemos $\Delta Y^N_{jt} = \Delta \delta_t + \Delta \boldsymbol{\theta}_t \mathbf{Z}_j + \Delta \boldsymbol{\lambda}_t \boldsymbol{\mu}_j + \Delta \varepsilon_{jt}$. Se os fatores comuns $\boldsymbol{\lambda}_t$ variarem lentamente no tempo ($\Delta \boldsymbol{\lambda}_t$ pequeno), diferenciar ajuda a controlar o viés.
+   - *Perigo (Alerta de Abadie, 2021, p. 412):* Se os choques idiossincráticos $\varepsilon_{jt}$ forem aproximadamente independentes no tempo, a variância do ruído diferenciado dobra: $\text{Var}(\Delta \varepsilon_{jt}) = 2\text{Var}(\varepsilon_{jt}) > \text{Var}(\varepsilon_{jt})$. Pela cota de viés da Seção @sec-teoria, inflar a variância do ruído aumenta o risco de *over-fitting* e pode **aumentar** o viés do Controle Sintético!
+
+## 6. Horizonte de Tempo Pré e Pós-Intervenção
+
+- **O *trade-off* de $T_0$ longo vs. Quebras Estruturais:** Embora um $T_0$ grande reduza a cota de viés sob estabilidade estrutural, janelas pré-intervenção longas demais (por exemplo, várias décadas) podem atravessar mudanças de regime nas quais as cargas fatoriais $\boldsymbol{\mu}_j$ deixam de ser constantes. Nesses casos, escolher $\mathbf{V}$ atribuindo maior peso às janelas pré-intervenção mais recentes mitiga a instabilidade estrutural.
+- **Horizonte pós-intervenção ($T - T_0$):** Se o efeito da política levar anos para maturar, dados pós-intervenção curtos não detectarão o impacto. Uma solução proativa sugerida por Abadie (2021, Seção 5) é utilizar **indicadores antecedentes (*leading indicators*) ou resultados substitutos (*surrogate outcomes*)** que respondam mais rapidamente à intervenção.
+
+---
+
+# Inferência Estatística e Testes de Robustez {#sec-inferencia}
+
+Em estudos de caso agregados, a inferência clássica baseada em amostragem repetida de uma superpopulação é pouco natural — frequentemente porque a amostra coincide com a própria população de interesse (por exemplo, todos os estados de um país ou todos os países da OCDE) e não há mecanismo de amostragem aleatória.
+
+Por isso, Abadie, Diamond e Hainmueller (2010) propõem um modo de **inferência baseada no desenho (*design-based permutation inference*)**, diretamente inspirado nos testes exatos de randomização de Fisher (1935).
+
+## 1. Placebos no Espaço (*In-Space Placebos*) e a Razão de RMSPE
+
+A ideia é simples e intuitiva: reatribuímos artificialmente a intervenção, uma unidade por vez, para cada uma das $J$ unidades do *donor pool* (tratando a unidade $j \in \{2, \dots, J+1\}$ como se tivesse sofrido a intervenção no instante $T_0$ e usando as demais $J$ unidades como doadoras). Assim, obtemos uma distribuição empírica de "efeitos placebo" sob a hipótese nula de ausência de efeito.
+
+Contudo, surge uma complicação prática: mesmo que o controle sintético ajuste muito bem a unidade tratada ($j=1$) antes de $T_0$, algumas unidades periféricas do *donor pool* (por serem extremas) podem ter um péssimo ajuste pré-tratamento, gerando hiatos grandes no pós-tratamento simplesmente por falha de ajuste, e não por efeito causal.
+
+Para corrigir essa assimetria de qualidade de ajuste, definimos o **Root Mean Squared Prediction Error (RMSPE)** da unidade $j$ entre quaisquer períodos $t_1$ e $t_2$ ($1 \le t_1 \le t_2 \le T$):
+
+$$R_j(t_1, t_2) = \left( \frac{1}{t_2 - t_1 + 1} \sum_{t=t_1}^{t_2} \left( Y_{jt} - \hat{Y}^N_{jt} \right)^2 \right)^{1/2}, \qquad (9)$$
+
+e calculamos para cada unidade $j \in \{1, 2, \dots, J+1\}$ a **estatística de razão entre o RMSPE pós-intervenção e o RMSPE pré-intervenção**:
+
+$$r_j = \frac{R_j(T_0 + 1, T)}{R_j(1, T_0)}. \qquad (10)$$
+
+::: {.callout-tip}
+## Nota sobre `tidysynth` vs. Notação de Abadie (2021)
+Na equação $(10)$, Abadie (2021) define $r_j$ como a razão entre as raízes quadradas ($R_j$, ou seja, $\text{RMSPE}_{\text{pós}} / \text{RMSPE}_{\text{pré}}$). Já o pacote `tidysynth` (função `grab_significance()`) reporta `mspe_ratio` como a razão entre os erros quadráticos médios sem raiz ($\text{MSPE}_{\text{pós}} / \text{MSPE}_{\text{pré}} = r_j^2$). Como a função $f(x) = x^2$ é estritamente crescente para $x \ge 0$, **o ordenamento (*rank*) das unidades e o *p-valor* exato de Fisher são rigorosamente idênticos** nas duas convenções!
+:::
+
+O ***p-valor* bilateral por permutação** mede a fração de unidades (incluindo a própria unidade tratada) cuja razão $r_j$ é tão ou mais extrema que a da unidade tratada $r_1$:
+
+$$p = \frac{1}{J + 1} \sum_{j=1}^{J+1} \mathbb{I}_+(r_j - r_1), \qquad (11)$$
+
+onde $\mathbb{I}_+(\cdot)$ vale $1$ se o argumento for não negativo e $0$ caso contrário. Note que, com $J$ doadores, o menor *p-valor* possível (quando a unidade tratada fica em 1º lugar no ranking, $r_1 > r_j$ para todo $j \ge 2$) é exatamente $\frac{1}{J+1}$.
+
+Duas extensões práticas importantes para a inferência por placebos no espaço:
+
+- **Descarte de placebos com mau ajuste pré-tratamento:** Alternativamente ao uso de $r_j$, pode-se avaliar a distribuição de $R_j(T_0+1, T)$ descartando os placebos cujo erro pré-tratamento $R_j(1, T_0)$ seja muito superior ao da unidade tratada (por exemplo, $R_j(1, T_0) > 2 R_1(1, T_0)$ ou $\text{MSPE}_{\text{pré}, j} > 5 \times \text{MSPE}_{\text{pré}, 1}$).
+- **Testes Unilaterais (Ganho de Poder em Amostras Pequenas):** Se a teoria econômica prevê a direção do efeito (por exemplo, uma recessão reduz a produção industrial, $\tau_{1t} < 0$), substituir $Y_{jt} - \hat{Y}^N_{jt}$ na equação $(9)$ pela sua parte positiva $(Y_{jt} - \hat{Y}^N_{jt})^+$ ou negativa $(Y_{jt} - \hat{Y}^N_{jt})^-$ produz inferência unilateral com substancial ganho de poder estatístico (Abadie, 2021, p. 404).
+
+## 2. Placebo no Tempo (*Backdating / In-Time Placebo*)
+
+No teste de placebo no tempo (inspirado nos testes pré-programa de Heckman e Hotz, 1989), **antecipamos artificialmente a data da intervenção** para um período $T_{\text{placebo}} < T_0$ (por exemplo, na aplicação alemã, Abadie retroage a reunificação de 1990 para 1980).
+
+- Os pesos $\mathbf{W}^*$ e $\mathbf{V}^*$ são estimados usando **exclusivamente** os dados até $T_{\text{placebo}}$ (sem nenhuma informação sobre o que ocorreu entre $T_{\text{placebo}} + 1$ e $T_0$).
+- Para que o Controle Sintético seja crível, devemos observar **duas características** no gráfico do placebo no tempo:
+  1. A trajetória sintética deve continuar acompanhando de perto a trajetória real durante todo o intervalo de validação $(T_{\text{placebo}} + 1, \dots, T_0)$, sem abrir hiatos espúrios antes da intervenção verdadeira;
+  2. O descolamento entre a série real e a sintética deve surgir apenas a partir da data da intervenção verdadeira $T_0$.
+
+## 3. Sensibilidade *Leave-One-Out* (LOO) e Robustez aos Preditores
+
+As conclusões de um estudo empírico não podem depender de uma escolha arbitrária na matriz $[\mathbf{X}_1 : \mathbf{X}_0]$. Abadie (2021, Seção 7) destaca a necessidade de verificar a sensibilidade em duas dimensões:
+
+1. **Sensibilidade às colunas de $\mathbf{X}_0$ (*Leave-One-Out* no *donor pool*):** Reestima-se iterativamente o modelo removendo da amostra, **uma de cada vez**, cada uma das unidades doadoras que receberam peso positivo ($w_j^* > 0$) na estimação principal.
+   - Se a trajetória das curvas *leave-one-out* permanecer agrupada em torno da estimativa principal e bem abaixo (ou acima) da unidade tratada, o efeito é robusto.
+   - Se a exclusão de um único doador alterar drasticamente a estimativa pós-tratamento *sem* piorar o ajuste pré-tratamento, deve-se investigar se aquele doador específico sofreu algum choque idiossincrático ou intervenção não documentada no pós-período.
+2. **Sensibilidade às linhas de $[\mathbf{X}_1 : \mathbf{X}_0]$ (Escolha dos preditores):** Testar combinações alternativas de preditores e janelas temporais, avaliando o poder preditivo no período de validação.
+
+---
+
+# Extensões Modernas da Literatura (Seção 8 de Abadie, 2021) {#sec-extensoes}
+
+A literatura de Controle Sintético expandiu-se rapidamente nos últimos anos para resolver desafios práticos específicos. Abaixo resumimos as cinco principais frentes detalhadas por Abadie (2021, Seção 8):
+
+## 1. Múltiplas Unidades Tratadas e Controle Sintético Penalizado (Abadie e L'Hour, 2021)
+
+Quando há $I \ge 1$ unidades tratadas ou dados desagregados, duas dificuldades surgem: (i) o ponto $\mathbf{X}_i$ pode cair *dentro* da envoltória convexa de $\mathbf{X}_0$, gerando infinitas soluções $\mathbf{W}^*$ que reproduzem perfeitamente $\mathbf{X}_i$, e (ii) algumas soluções podem combinar unidades muito distantes de $\mathbf{X}_i$, gerando **viés de interpolação**.
+
+Para resolver ambos os problemas simultaneamente, Abadie e L'Hour (2021) propõem o **Controle Sintético Penalizado**, que adiciona um termo de penalização pelas discrepâncias par-a-par entre cada doador $j$ e a unidade tratada $i$:
+
+$$\mathbf{W}^*_i(\lambda) = \arg\min_{\mathbf{W} \in \Delta^J} \left\{ \|\mathbf{X}_i - \mathbf{X}_0 \mathbf{W}\|^2 + \lambda \sum_{j=I+1}^{I+J} w_j \|\mathbf{X}_i - \mathbf{X}_j\|^2 \right\}, \qquad (\lambda > 0). \qquad (12)$$
+
+- O primeiro termo minimiza o erro de ajuste agregado do controle sintético;
+- O segundo termo penaliza atribuir peso $w_j$ a doadores cujas características individuais $\mathbf{X}_j$ estejam longe de $\mathbf{X}_i$;
+- Quando $\lambda \to 0$, recuperamos o Controle Sintético clássico (escolhendo, dentre eventuais múltiplas soluções, a que minimiza a distância par-a-par); quando $\lambda \to \infty$, o estimador converge para o *nearest-neighbor matching* (1-para-1). Para qualquer $\lambda > 0$ (escolhido por validação cruzada), a solução é garantidamente **única e esparsa**.
+
+## 2. Correção de Viés e *Augmented Synthetic Control* (Ben-Michael, Feller e Rothstein, 2021)
+
+Quando $\mathbf{X}_i$ não pode ser reproduzido perfeitamente pelos doadores ($\mathbf{X}_i \neq \mathbf{X}_0 \mathbf{W}^*_i$), pode restar um viés de incompatibilidade de preditores. Inspirados nos estimadores de *matching* com correção de viés de Rubin (1973) e Abadie e Imbens (2011), Abadie e L'Hour (2021) e Ben-Michael, Feller e Rothstein (2021) propõem estimar uma função de regressão $\hat{\mu}_{0t}(\mathbf{X})$ nos doadores não tratados e ajustar o estimador:
+
+$$\hat{\tau}^{\text{BC}}_{it} = \left( Y_{it} - \sum_{j=I+1}^{I+J} w^*_{ij} Y_{jt} \right) - \sum_{j=I+1}^{I+J} w^*_{ij} \left( \hat{\mu}_{0t}(\mathbf{X}_i) - \hat{\mu}_{0t}(\mathbf{X}_j) \right) = \left( Y_{it} - \hat{\mu}_{0t}(\mathbf{X}_i) \right) - \sum_{j=I+1}^{I+J} w^*_{ij} \left( Y_{jt} - \hat{\mu}_{0t}(\mathbf{X}_j) \right). \qquad (13)$$
+
+A segunda igualdade na equação $(13)$ oferece uma intuição cristalina: o Controle Sintético Corrigido por Viés equivale a **aplicar o Controle Sintético aos resíduos da regressão** de $Y_{jt}$ sobre os preditores $\mathbf{X}_j$.
+
+## 3. Métodos Baseados em Regressão Regularizada e *Synthetic DiD*
+
+- **Regressão *Elastic Net* com Intercepto (Doudchenko e Imbens, 2016):** Propõem relaxar as restrições de não-negatividade e soma unitária, estimando $\hat{Y}^N_{1t} = \hat{\alpha} + \sum_{j=2}^{J+1} \hat{w}_j Y_{jt}$ por meio da minimização do erro pré-intervenção acrescido de uma penalidade *Elastic Net* (combinação de Ridge $L_2$ e LASSO $L_1$).
+- **Synthetic Difference-in-Differences (Arkhangelsky et al., 2021):** Combina pesos nas unidades ($w_j$, que alinham tendências pré-intervenção entre tratados e doadores) com **pesos nos períodos de tempo pré-intervenção** ($\lambda_t$, que dão maior importância aos períodos pré-tratamento mais parecidos com o pós-tratamento), unificando as propriedades de dupla robustez do DiD e do Controle Sintético.
+
+## 4. Completamento de Matrizes (*Matrix Completion*)
+
+Amjad, Shah e Shen (2018) (*Robust Synthetic Control*) e Athey et al. (2021) tratam o problema de avaliação causal como um problema de **imputação de entradas faltantes em uma matriz de painel** $(J+1) \times T$, onde os valores contrafactuais $Y^N_{1t}$ para $t > T_0$ são as células ausentes (*missing*). Assumindo que a matriz subjacente de sinal $\mathbf{M} = [f(\boldsymbol{\mu}_j, \boldsymbol{\lambda}_t)]$ tem **posto baixo (*low-rank*)**, utiliza-se decomposição em valores singulares truncada (*Singular Value Thresholding* — SVD) ou regularização por norma nuclear para filtrar o ruído $\varepsilon_{jt}$, lidar com painéis desbalanceados e reconstruir o contrafactual.
+
+## 5. Novos Procedimentos de Inferência em Série Temporal
+
+Quando $T_0$ é grande e os resíduos $u_t = Y_{1t} - \hat{Y}^N_{1t}$ são estacionários e fracamente dependentes, surgem alternativas à permutação entre unidades:
+
+- **Inferência Conformal via Permutação no Tempo (Chernozhukov, Wüthrich e Zhu, 2021a):** Permutam-se os resíduos estimados $\hat{u}_1, \dots, \hat{u}_T$ na dimensão temporal sob a hipótese nula $\tau_{T_0+1} = a_{T_0+1}, \dots, \tau_T = a_T$, permitindo inferência válida mesmo com uma única unidade tratada quando os resíduos são permutáveis (*exchangeable*).
+- **Conjuntos de Confiança por Inversão de Permutação (Firpo e Possebom, 2018):** Constroem intervalos de confiança invertendo o teste de permutação no espaço e analisam a sensibilidade a desvios da atribuição uniforme de tratamento.
+- **Intervalos de Previsão (Cattaneo, Feng e Titiunik, 2021):** Quantificam separadamente a incerteza de estimação dos pesos na parte determinística e a incerteza irredutível do choque aleatório pós-tratamento $u_t$.
+
+---
+
+# Tutorial Prático Completo no R com `tidysynth` {#sec-tutorial}
+
+Para consolidar todos os conceitos teóricos e metodológicos deste guia, vamos implementar passo a passo o estudo clássico da **Proposição 99 da Califórnia** (Abadie, Diamond e Hainmueller, 2010), cuja base de dados (`smoking`) já vem integrada ao pacote `tidysynth`.
+
+- **O Contexto:** Em novembro de 1988 (entrando em vigor em janeiro de 1989), a Califórnia aprovou a *Proposition 99*, que elevou o imposto sobre cigarros em 25 centavos por maço e financiou campanhas massivas antitabagismo.
+- **Unidade tratada ($j=1$):** `"California"`.
+- **Período amostral ($T$):** `1970` a `2000` (31 anos anuais), com intervenção em `i_time = 1988` ($T_0 = 19$ anos pré-intervenção, de 1970 a 1988).
+- **Variável de resultado ($Y_{jt}$):** `cigsale` (vendas anuais de cigarros *per capita*, em maços por habitante — note que já está reescalonada *per capita*!).
+- ***Donor Pool* ($J = 38$ estados):** Os 38 estados americanos que **não** adotaram programas ou aumentos expressivos de impostos sobre tabaco no período (12 estados que adotaram políticas similares já foram criteriosamente excluídos da base `smoking`, respeitando o Requisito 2 da Seção @sec-requisitos!).
+
+## Passo 1: Carregamento dos Pacotes e Inspeção do Painel
+
+```{r}
+#| message: false
+#| warning: false
+
+library(tidyverse)
+library(tidysynth)
+library(knitr)
+
+data("smoking", package = "tidysynth")
+
+glimpse(smoking)
+```
+
+Vamos verificar visualmente por que uma comparação ingênua com a **média simples dos demais estados** falha (como na Figura 1A de Abadie, 2021):
+
+```{r}
+#| message: false
+#| warning: false
+
+smoking %>%
+  mutate(grupo = ifelse(state == "California", "Califórnia (Tratada)", "Demais Estados (Donor Pool)")) %>%
+  group_by(grupo, year) %>%
+  summarise(media_vendas = mean(cigsale, na.rm = TRUE), .groups = "drop") %>%
+  ggplot(aes(x = year, y = media_vendas, color = grupo, linetype = grupo)) +
+  geom_line(linewidth = 1) +
+  geom_vline(xintercept = 1988, linetype = "dashed", color = "black") +
+  scale_color_manual(values = c("Califórnia (Tratada)" = "#b22222", "Demais Estados (Donor Pool)" = "steelblue")) +
+  labs(
+    title    = "Vendas de Cigarros per capita: Califórnia vs. Média Simples dos Doadores",
+    subtitle = "A média simples não reproduz o nível nem a inclinação da Califórnia antes de 1988",
+    x = "Ano", y = "Maços per capita", color = NULL, linetype = NULL
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")
+```
+
+## Passo 2: Especificação e Estimação do Controle Sintético
+
+Seguindo Abadie, Diamond e Hainmueller (2010) e a Seção @sec-teoria deste guia, incluímos na matriz de preditores $[\mathbf{X}_1 : \mathbf{X}_0]$:
+
+1. **Covariáveis estruturais ($\mathbf{Z}_j$):** Renda pessoal *per capita* em log (`lnincome`), preço médio de varejo do cigarro (`retprice`), proporção de jovens de 15 a 24 anos (`age15to24`, medida entre 1980 e 1988) e consumo de cerveja *per capita* (`beer`, disponível entre 1984 e 1988).
+2. **Valores pré-intervenção do resultado ($Y_{jt}$):** Três marcos temporais pré-intervenção da própria série de vendas de cigarros (`1975`, `1980` e `1988`) para ancorar as cargas fatoriais latentes $\boldsymbol{\mu}_j$ sem perder esparsidade.
+
+```{r}
+#| message: false
+#| warning: false
+
+modelo_california <- smoking %>%
+  # 1. Inicializa a estrutura do controle sintético e solicita a geração dos placebos
+  synthetic_control(
+    outcome           = cigsale,
+    unit              = state,
+    time              = year,
+    i_unit            = "California",
+    i_time            = 1988,
+    generate_placebos = TRUE
+  ) %>%
+  # 2. Preditores estruturais observados (Zj) em suas respectivas janelas de disponibilidade
+  generate_predictor(
+    time_window = 1980:1988,
+    renda_log    = mean(lnincome, na.rm = TRUE),
+    preco_varejo = mean(retprice, na.rm = TRUE),
+    prop_jovens  = mean(age15to24, na.rm = TRUE)
+  ) %>%
+  generate_predictor(
+    time_window = 1984:1988,
+    consumo_cerveja = mean(beer, na.rm = TRUE)
+  ) %>%
+  # 3. Valores pré-intervenção da variável de resultado (ancoragem de mu_j)
+  generate_predictor(time_window = 1975, cigsale_1975 = cigsale) %>%
+  generate_predictor(time_window = 1980, cigsale_1980 = cigsale) %>%
+  generate_predictor(time_window = 1988, cigsale_1988 = cigsale) %>%
+  # 4. Otimização de V* e W* minimizando o MSPE pré-intervenção (1970 a 1988)
+  generate_weights(
+    optimization_window = 1970:1988,
+    margin_ipop         = 0.02,
+    sigf_ipop           = 7,
+    bound_ipop          = 6
+  ) %>%
+  # 5. Construção das séries sintéticas para a unidade tratada e para os placebos
+  generate_control()
+```
+
+## Passo 3: Verificação de Transparência (Balanço de Preditores e Pesos Esparsos)
+
+Conforme enfatizado na Seção @sec-vantagens, a primeira obrigação do pesquisador após estimar o modelo é inspecionar a **tabela de balanço** ($\mathbf{X}_1$ vs. $\mathbf{X}_0 \mathbf{W}^*$ vs. média simples do *donor pool*) e os **pesos atribuídos aos estados doadores** ($\mathbf{W}^*$):
+
+```{r}
+#| message: false
+#| warning: false
+
+# Tabela de balanço dos preditores (equivalente à Tabela 1 de Abadie, 2021)
+modelo_california %>%
+  grab_balance_table() %>%
+  mutate(across(where(is.numeric), ~ round(.x, 2))) %>%
+  kable(
+    col.names = c("Preditor", "Califórnia Real", "Califórnia Sintética", "Média Simples (Doadores)"),
+    caption   = "Balanço dos Preditores Pré-Intervenção (Condição da Envoltória Convexa)"
+  )
+```
+
+Observe como a **Califórnia Sintética** reproduz com altíssima precisão todas as características da Califórnia Real (enquanto a média simples dos doadores erra por 14 a 30 maços nas vendas de cigarros!). Agora vejamos a **esparsidade geométrica** dos pesos $\mathbf{W}^*$:
+
+```{r}
+#| message: false
+#| warning: false
+
+# Pesos das unidades doadoras (equivalente à Tabela 2 de Abadie, 2021)
+modelo_california %>%
+  grab_unit_weights() %>%
+  filter(weight > 0.001) %>%
+  arrange(desc(weight)) %>%
+  mutate(weight = round(weight, 3)) %>%
+  kable(
+    col.names = c("Estado Doador", "Peso (w_j*)"),
+    caption   = "Estados que Compõem a Califórnia Sintética (Apenas 5 dos 38 Doadores)"
+  )
+
+# Visualização gráfica dos pesos das unidades e dos preditores
+modelo_california %>% plot_weights()
+```
+
+Dos 38 estados no *donor pool*, apenas **5 estados** (Utah, Nevada, Montana, Colorado e Connecticut) recebem peso positivo — exatamente limitado pelo número de preditores!
+
+## Passo 4: Trajetória Contrafactual e Estimativa do Efeito ($\hat{\tau}_{1t}$)
+
+```{r}
+#| message: false
+#| warning: false
+
+# Trajetória Real vs. Sintética (equivalente à Figura 1B de Abadie, 2021)
+modelo_california %>%
+  plot_trends() +
+  labs(
+    title    = "Trajetória das Vendas de Cigarros: Califórnia Real vs. Califórnia Sintética",
+    subtitle = "Ajuste pré-intervenção (1970–1988) e efeito causal pós-Proposição 99 (1989–2000)",
+    x = "Ano", y = "Maços per capita"
+  ) +
+  theme_minimal()
+
+# Gráfico do hiato estimado: tau_1t = Y_1t - Y_1t^N
+modelo_california %>%
+  plot_differences() +
+  labs(
+    title    = "Efeito Causal Estimado (Gap = Califórnia Real - Califórnia Sintética)",
+    subtitle = "Em 2000, o consumo per capita na Califórnia era cerca de 26 maços menor que no contrafactual",
+    x = "Ano", y = "Diferença em maços per capita"
+  ) +
+  theme_minimal()
+```
+
+## Passo 5: Inferência por Permutação (Placebos no Espaço e Razão de MSPE)
+
+Por fim, executamos a inferência baseada no desenho (Seção @sec-inferencia), comparando o efeito da Califórnia com os 38 placebos no espaço e ordenando a razão entre o erro pós e pré-intervenção:
+
+```{r}
+#| message: false
+#| warning: false
+
+# Gráfico de Placebos no Espaço (com poda automática de placebos extremos no pré-período)
+modelo_california %>%
+  plot_placebos(prune = TRUE) +
+  labs(
+    title    = "Teste de Placebos no Espaço (In-Space Placebos)",
+    subtitle = "Califórnia (vermelho) vs. placebos nos estados doadores com bom ajuste pré-1988 (cinza)",
+    x = "Ano", y = "Gap (Real - Sintético)"
+  ) +
+  theme_minimal()
+
+# Ranking da Razão MSPE Pós / Pré
+modelo_california %>%
+  plot_mspe_ratio() +
+  labs(
+    title = "Distribuição de Permutação da Razão MSPE (Pós / Pré-1988)",
+    x = "Estado", y = "Razão MSPE"
+  ) +
+  theme_minimal()
+
+# Tabela dos 10 primeiros colocados no teste exato de Fisher
+modelo_california %>%
+  grab_significance() %>%
+  slice_head(n = 10) %>%
+  mutate(across(where(is.numeric), ~ round(.x, 4))) %>%
+  kable(caption = "Top 10 Unidades na Distribuição de Permutação da Razão MSPE")
+```
+
+A Califórnia ocupa o **1º lugar** entre todas as 39 unidades ($J + 1 = 39$), gerando um *p-valor* exato de Fisher igual a $1/39 \approx 0{,}0256$ ($2{,}56\%$). Ou seja, se atribuíssemos a intervenção ao acaso a qualquer estado da amostra, a probabilidade de observar uma razão de descolamento pós/pré tão grande quanto a da Califórnia seria de apenas $2{,}56\%$.
+
+---
+
+# Checklist de Bolso para o Pesquisador Aplicado
+
+Ao conduzir o seu próprio estudo com Controle Sintético, percorra esta lista de verificação antes de reportar os resultados:
+
+- [ ] **Escala e envoltória convexa:** A variável de resultado $Y_{jt}$ está em escala comparável entre unidades (*per capita*, taxas ou índice normalizado pela média pré-tratamento)? A unidade tratada está dentro da envoltória convexa dos doadores na tabela de balanço?
+- [ ] **Higiene do *donor pool*:** Foram excluídas todas as unidades que sofreram intervenções semelhantes, grandes choques idiossincráticos ou *spillovers* diretos severos? As unidades restantes possuem características estruturais compatíveis para evitar viés de interpolação?
+- [ ] **Datação e antecipação:** A data $T_0$ foi posicionada *antes* de qualquer reação antecipada dos agentes ou início preliminar do choque?
+- [ ] **Qualidade do ajuste pré-tratamento:** O controle sintético acompanha a trajetória de $Y_{1t}$ sem viés sistemático ao longo de toda a janela $1, \dots, T_0$ (especialmente nos períodos imediatamente anteriores a $T_0$)?
+- [ ] **Três pilares de validação reportados:**
+  1. Tabela de balanço ($\mathbf{X}_1$, $\mathbf{X}_0\mathbf{W}^*$, média simples) e tabela de pesos esparsos ($\mathbf{W}^*$);
+  2. Inferência por placebos no espaço e ranking da razão de RMSPE/MSPE ($r_j$);
+  3. Testes de diagnóstico: placebo no tempo (*backdating*) e sensibilidade *leave-one-out* (LOO).
+
+---
+
+# Referências Bibliográficas
+
+- **Abadie, Alberto.** 2021. "Using Synthetic Controls: Feasibility, Data Requirements, and Methodological Aspects." *Journal of Economic Literature* 59 (2): 391–425. <https://doi.org/10.1257/jel.20191450>
+- **Abadie, Alberto, Alexis Diamond, and Jens Hainmueller.** 2010. "Synthetic Control Methods for Comparative Case Studies: Estimating the Effect of California's Tobacco Control Program." *Journal of the American Statistical Association* 105 (490): 493–505.
+- **Abadie, Alberto, Alexis Diamond, and Jens Hainmueller.** 2015. "Comparative Politics and the Synthetic Control Method." *American Journal of Political Science* 59 (2): 495–510.
+- **Abadie, Alberto, and Javier Gardeazabal.** 2003. "The Economic Costs of Conflict: A Case Study of the Basque Country." *American Economic Review* 93 (1): 113–132.
+- **Abadie, Alberto, and Jérémy L'Hour.** 2021. "A Penalized Synthetic Control Estimator for Disaggregated Data." *Journal of the American Statistical Association* 116 (536): 1817–1834.
+- **Amjad, Muhammad, Devavrat Shah, and Dennis Shen.** 2018. "Robust Synthetic Control." *Journal of Machine Learning Research* 19 (22): 1–51.
+- **Arkhangelsky, Dmitry, Susan Athey, David A. Hirshberg, Guido W. Imbens, and Stefan Wager.** 2021. "Synthetic Difference-in-Differences." *American Economic Review* 111 (12): 4088–4118.
+- **Athey, Susan, and Guido W. Imbens.** 2017. "The State of Applied Econometrics: Causality and Policy Evaluation." *Journal of Economic Perspectives* 31 (2): 3–32.
+- **Bai, Jushan.** 2009. "Panel Data Models with Interactive Fixed Effects." *Econometrica* 77 (4): 1229–1279.
+- **Ben-Michael, Eli, Avi Feller, and Jesse Rothstein.** 2021. "The Augmented Synthetic Control Method." *Journal of the American Statistical Association* 116 (536): 1789–1803.
+- **Cattaneo, Matias D., Yinjie Feng, and Rocio Titiunik.** 2021. "Prediction Intervals for Synthetic Control Methods." *Journal of the American Statistical Association* 116 (536): 1865–1880.
+- **Chernozhukov, Victor, Kaspar Wüthrich, and Yinchu Zhu.** 2021. "An Exact and Robust Conformal Inference Method for Counterfactual and Synthetic Controls." *Journal of the American Statistical Association* 116 (536): 1849–1864.
+- **Doudchenko, Nikolay, and Guido W. Imbens.** 2016. "Balancing, Regression, Difference-in-Differences and Synthetic Control Methods: A Synthesis." *NBER Working Paper* 22791.
+- **Ferman, Bruno, and Cristine Pinto.** 2021. "Synthetic Controls with Imperfect Pre-Treatment Fit." *Quantitative Economics* 12 (4): 1197–1221.
+- **Firpo, Sergio, and Vitor Possebom.** 2018. "Synthetic Control Method: Inference, Sensitivity Analysis and Confidence Sets." *Journal of Causal Inference* 6 (2): 20160026.
+```{r}
+#| message: false
+#| warning: false
+
+# Pesos das unidades doadoras (equivalente à Tabela 2 de Abadie, 2021)
+modelo_california %>%
+  grab_unit_weights() %>%
+  filter(weight > 0.001) %>%
+  arrange(desc(weight)) %>%
+  mutate(weight = round(weight, 3)) %>%
+  kable(
+    col.names = c("Estado Doador", "Peso (w_j*)"),
+    caption   = "Estados que Compõem a Califórnia Sintética (Apenas 5 dos 38 Doadores)"
+  )
+
+# Visualização gráfica dos pesos das unidades e dos preditores
+modelo_california %>% plot_weights()
+```
+
+Dos 38 estados no *donor pool*, apenas **5 estados** (Utah, Nevada, Montana, Colorado e Connecticut) recebem peso positivo — exatamente limitado pelo número de preditores!
+
+## Passo 4: Trajetória Contrafactual e Estimativa do Efeito ($\hat{\tau}_{1t}$)
+
+```{r}
+#| message: false
+#| warning: false
+
+# Trajetória Real vs. Sintética (equivalente à Figura 1B de Abadie, 2021)
+modelo_california %>%
+  plot_trends() +
+  labs(
+    title    = "Trajetória das Vendas de Cigarros: Califórnia Real vs. Califórnia Sintética",
+    subtitle = "Ajuste pré-intervenção (1970–1988) e efeito causal pós-Proposição 99 (1989–2000)",
+    x = "Ano", y = "Maços per capita"
+  ) +
+  theme_minimal()
+
+# Gráfico do hiato estimado: tau_1t = Y_1t - Y_1t^N
+modelo_california %>%
+  plot_differences() +
+  labs(
+    title    = "Efeito Causal Estimado (Gap = Califórnia Real - Califórnia Sintética)",
+    subtitle = "Em 2000, o consumo per capita na Califórnia era cerca de 26 maços menor que no contrafactual",
+    x = "Ano", y = "Diferença em maços per capita"
+  ) +
+  theme_minimal()
+```
+
+## Passo 5: Inferência por Permutação (Placebos no Espaço e Razão de MSPE)
+
+Por fim, executamos a inferência baseada no desenho (Seção @sec-inferencia), comparando o efeito da Califórnia com os 38 placebos no espaço e ordenando a razão entre o erro pós e pré-intervenção:
+
+```{r}
+#| message: false
+#| warning: false
+
+# Gráfico de Placebos no Espaço (com poda automática de placebos extremos no pré-período)
+modelo_california %>%
+  plot_placebos(prune = TRUE) +
+  labs(
+    title    = "Teste de Placebos no Espaço (In-Space Placebos)",
+    subtitle = "Califórnia (vermelho) vs. placebos nos estados doadores com bom ajuste pré-1988 (cinza)",
+    x = "Ano", y = "Gap (Real - Sintético)"
+  ) +
+  theme_minimal()
+
+# Ranking da Razão MSPE Pós / Pré
+modelo_california %>%
+  plot_mspe_ratio() +
+  labs(
+    title = "Distribuição de Permutação da Razão MSPE (Pós / Pré-1988)",
+    x = "Estado", y = "Razão MSPE"
+  ) +
+  theme_minimal()
+
+# Tabela dos 10 primeiros colocados no teste exato de Fisher
+modelo_california %>%
+  grab_significance() %>%
+  slice_head(n = 10) %>%
+  mutate(across(where(is.numeric), ~ round(.x, 4))) %>%
+  kable(caption = "Top 10 Unidades na Distribuição de Permutação da Razão MSPE")
+```
+
+A Califórnia ocupa o **1º lugar** entre todas as 39 unidades ($J + 1 = 39$), gerando um *p-valor* exato de Fisher igual a $1/39 \approx 0{,}0256$ ($2{,}56\%$). Ou seja, se atribuíssemos a intervenção ao acaso a qualquer estado da amostra, a probabilidade de observar uma razão de descolamento pós/pré tão grande quanto a da Califórnia seria de apenas $2{,}56\%$.
+
+---
+
+# Checklist de Bolso para o Pesquisador Aplicado
+
+Ao conduzir o seu próprio estudo com Controle Sintético, percorra esta lista de verificação antes de reportar os resultados:
+
+- [ ] **Escala e envoltória convexa:** A variável de resultado $Y_{jt}$ está em escala comparável entre unidades (*per capita*, taxas ou índice normalizado pela média pré-tratamento)? A unidade tratada está dentro da envoltória convexa dos doadores na tabela de balanço?
+- [ ] **Higiene do *donor pool*:** Foram excluídas todas as unidades que sofreram intervenções semelhantes, grandes choques idiossincráticos ou *spillovers* diretos severos? As unidades restantes possuem características estruturais compatíveis para evitar viés de interpolação?
+- [ ] **Datação e antecipação:** A data $T_0$ foi posicionada *antes* de qualquer reação antecipada dos agentes ou início preliminar do choque?
+- [ ] **Qualidade do ajuste pré-tratamento:** O controle sintético acompanha a trajetória de $Y_{1t}$ sem viés sistemático ao longo de toda a janela $1, \dots, T_0$ (especialmente nos períodos imediatamente anteriores a $T_0$)?
+- [ ] **Três pilares de validação reportados:**
+  1. Tabela de balanço ($\mathbf{X}_1$, $\mathbf{X}_0\mathbf{W}^*$, média simples) e tabela de pesos esparsos ($\mathbf{W}^*$);
+  2. Inferência por placebos no espaço e ranking da razão de RMSPE/MSPE ($r_j$);
+  3. Testes de diagnóstico: placebo no tempo (*backdating*) e sensibilidade *leave-one-out* (LOO).
+
+---
+
+# Referências Bibliográficas
+
+- **Abadie, Alberto.** 2021. "Using Synthetic Controls: Feasibility, Data Requirements, and Methodological Aspects." *Journal of Economic Literature* 59 (2): 391–425. <https://doi.org/10.1257/jel.20191450>
+- **Abadie, Alberto, Alexis Diamond, and Jens Hainmueller.** 2010. "Synthetic Control Methods for Comparative Case Studies: Estimating the Effect of California's Tobacco Control Program." *Journal of the American Statistical Association* 105 (490): 493–505.
+- **Abadie, Alberto, Alexis Diamond, and Jens Hainmueller.** 2015. "Comparative Politics and the Synthetic Control Method." *American Journal of Political Science* 59 (2): 495–510.
+- **Abadie, Alberto, and Javier Gardeazabal.** 2003. "The Economic Costs of Conflict: A Case Study of the Basque Country." *American Economic Review* 93 (1): 113–132.
+- **Abadie, Alberto, and Jérémy L'Hour.** 2021. "A Penalized Synthetic Control Estimator for Disaggregated Data." *Journal of the American Statistical Association* 116 (536): 1817–1834.
+- **Amjad, Muhammad, Devavrat Shah, and Dennis Shen.** 2018. "Robust Synthetic Control." *Journal of Machine Learning Research* 19 (22): 1–51.
+- **Arkhangelsky, Dmitry, Susan Athey, David A. Hirshberg, Guido W. Imbens, and Stefan Wager.** 2021. "Synthetic Difference-in-Differences." *American Economic Review* 111 (12): 4088–4118.
+- **Athey, Susan, and Guido W. Imbens.** 2017. "The State of Applied Econometrics: Causality and Policy Evaluation." *Journal of Economic Perspectives* 31 (2): 3–32.
+- **Bai, Jushan.** 2009. "Panel Data Models with Interactive Fixed Effects." *Econometrica* 77 (4): 1229–1279.
+- **Ben-Michael, Eli, Avi Feller, and Jesse Rothstein.** 2021. "The Augmented Synthetic Control Method." *Journal of the American Statistical Association* 116 (536): 1789–1803.
+- **Cattaneo, Matias D., Yinjie Feng, and Rocio Titiunik.** 2021. "Prediction Intervals for Synthetic Control Methods." *Journal of the American Statistical Association* 116 (536): 1865–1880.
+- **Chernozhukov, Victor, Kaspar Wüthrich, and Yinchu Zhu.** 2021. "An Exact and Robust Conformal Inference Method for Counterfactual and Synthetic Controls." *Journal of the American Statistical Association* 116 (536): 1849–1864.
+- **Doudchenko, Nikolay, and Guido W. Imbens.** 2016. "Balancing, Regression, Difference-in-Differences and Synthetic Control Methods: A Synthesis." *NBER Working Paper* 22791.
+- **Ferman, Bruno, and Cristine Pinto.** 2021. "Synthetic Controls with Imperfect Pre-Treatment Fit." *Quantitative Economics* 12 (4): 1197–1221.
+- **Firpo, Sergio, and Vitor Possebom.** 2018. "Synthetic Control Method: Inference, Sensitivity Analysis and Confidence Sets." *Journal of Causal Inference* 6 (2): 20160026.

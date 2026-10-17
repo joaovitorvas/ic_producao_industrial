@@ -13,6 +13,10 @@ website:
             text: "1. Exploratória"
           - href: analises/02_controlesintetico.qmd
             text: "2. Controle Sintético"
+      - text: "Anotações"
+        menu:
+          - href: anotacoes/variaveis_de_controle_sintetico.qmd
+            text: "Variáveis de Controle Sintético"
 
 lang: pt
 format:

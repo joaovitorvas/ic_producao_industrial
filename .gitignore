@@ -18,3 +18,4 @@ _site/
 /.quarto/
 **/*.quarto_ipynb
 *.rmarkdown
+/anotacoes/capitulo2.qmd
