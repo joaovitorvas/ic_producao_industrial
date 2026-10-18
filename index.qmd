@@ -1,9 +1,27 @@
 ---
-title: "Mudanças de tendência da produção industrial no Brasil"
+title: "Mudanças de Tendência da Produção Industrial no Brasil"
+subtitle: "Projeto de Iniciação Científica — Departamento de Estatística (IME-USP)"
 author: "João Vitor Vasconcelos Lima"
+number-sections: false
 ---
 
-Aqui estarão documentadas as análises para as séries temporais das tendências da produção industrial brasileira. 
+Bem-vindo à página de documentação do projeto de **Iniciação Científica** desenvolvido no **Instituto de Matemática e Estatística da Universidade de São Paulo (IME-USP)**, sob orientação da **Profª. Dra. Airlane Pereira Alencar**.
 
-Projeto feito sob orientação da Professora Airlane P. Alencer, do Instituto de Matemática e Estatística da Universidade de São Paulo (IME-USP). 
+## Objetivo da Pesquisa
 
+A série mensal de produção física industrial brasileira (PIM-PF / IBGE) passou por importantes mudanças de regime ao longo das últimas duas décadas — incluindo a **Crise Financeira Internacional de 2008**, a **Grande Recessão Brasileira de 2014–2016** e a **Pandemia de COVID-19 em 2020**.
+
+---
+
+## Navegação pelos Cadernos do Projeto
+
+### Análises Empíricas
+- **[1. Análise Exploratória e Modelos Iniciais](analises/01_exploratoria.qmd)**  
+  Visualização da série histórica (2002–presente), justificativa econômica das quebras estruturais, decomposição sazonal-tendência via LOESS (STL) e ajuste de modelos determinísticos preliminares.
+
+- **[2. Impacto da Crise de 2014 com Controle Sintético](analises/02_controlesintetico.qmd)**  
+  Estimação do efeito causal da recessão brasileira iniciada no 2º trimestre de 2014 sobre a produção industrial física a partir de um painel internacional da OCDE/FRED.
+
+### Anotações Metodológicas e Teóricas
+- **[Guia Prático: Método de Controle Sintético](anotacoes/variaveis_de_controle_sintetico.qmd)**  
+  Revisão metodológica completa baseada em Abadie (2021, *Journal of Economic Literature*), cobrindo o modelo de fatores lineares, cota de viés, geometria da esparsidade, requisitos práticos de viabilidade e um tutorial reprodutível passo a passo com o pacote `tidysynth`.

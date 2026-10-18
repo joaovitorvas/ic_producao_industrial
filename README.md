@@ -2,7 +2,7 @@
 
 Repositório central de documentação, códigos, notas teóricas e análises empíricas desenvolvidas no âmbito do projeto de **Iniciação Científica (IC)** no **Instituto de Matemática e Estatística da Universidade de São Paulo (IME-USP)**.
 
-- **Pesquisador:** João Vítor Vasconcelos Lima (Bacharelando em Estatística — IME-USP)
+- **Pesquisador:** João Vitor Vasconcelos Lima (Bacharelando em Estatística — IME-USP)
 - **Orientadora:** Profª. Dra. Airlane Pereira Alencar (Departamento de Estatística — IME-USP)
 - **Palavras-chave:** Séries Temporais, Modelos de Regressão Segmentada, SARIMA / ARIMAX, Modelos GARMA, Decomposição STL, Controle Sintético.
 
@@ -29,8 +29,12 @@ O projeto é documentado em formato de site reprodutível construído em **Quart
 
 ```text
 ic_producao_industrial/
-├── _quarto.yml                              # Configuração do site Quarto
-├── index.qmd                                # Página inicial do projeto
+├── .github/
+│   └── workflows/
+│       └── publish.yml                      # Deploy automático para o GitHub Pages via GitHub Actions
+├── _quarto.yml                              # Configuração global do site Quarto (com freeze: auto)
+├── _freeze/                                 # Cache de resultados computacionais do R para build rápido
+├── index.qmd                                # Página inicial do site
 ├── README.md                                # Documentação geral e guia do repositório
 ├── renv.lock                                # Controle de versões de pacotes R (reprodutibilidade)
 ├── dados/
@@ -71,12 +75,14 @@ O desenvolvimento da pesquisa está organizado em cinco frentes metodológicas i
 
 ---
 
-## Como Reproduzir o Ambiente e Renderizar o Projeto
+## Como Reproduzir o Ambiente e Publicar no GitHub Pages
+
+O site do projeto é publicado em **<https://joaovitorvas.github.io/ic_producao_industrial/>**.
 
 ### Pré-requisitos
 - **R** (versão $\ge 4.4$)
 - **Quarto CLI** instalado no sistema
-- Chave de API do FRED (*Federal Reserve Economic Data*) caso deseje atualizar as séries internacionais diretamente da API em [`analises/02_controlesintetico.qmd`](analises/02_controlesintetico.qmd).
+- Chave de API do FRED (*Federal Reserve Economic Data*) em `dados/.env` caso deseje reexecutar do zero as extrações da API em [`analises/02_controlesintetico.qmd`](analises/02_controlesintetico.qmd).
 
 ### 1. Restaurar os pacotes do R (`renv`)
 O projeto utiliza o pacote `renv` para garantir reprodutibilidade exata das bibliotecas (`tidyverse`, `tidysynth`, `fredr`, `forecast`, `strucchange`, entre outras). No console do R, na raiz do projeto, execute:
@@ -85,27 +91,25 @@ O projeto utiliza o pacote `renv` para garantir reprodutibilidade exata das bibl
 renv::restore()
 ```
 
-### 2. Configurar variáveis de ambiente (opcional para API do FRED)
+### 2. Configurar variáveis de ambiente (para chamadas à API do FRED)
 Para rodar a extração internacional via `fredr`, crie um arquivo `dados/.env` com a sua chave do FRED:
 
 ```env
 FRED_API_KEY=sua_chave_aqui
 ```
 
-### 3. Renderizar o site completo em Quarto
-No terminal, na raiz do repositório, execute:
+### 3. Renderizar localmente e atualizar o cache (`_freeze/`)
+O arquivo [`_quarto.yml`](_quarto.yml) está configurado com `execute: freeze: auto`. Isso significa que, ao rodar `quarto render` na sua máquina, o Quarto salva os resultados dos blocos de R na pasta `_freeze/` (e só reexecuta um documento quando o seu código-fonte é modificado):
 
 ```bash
 quarto render
 ```
 
-Os arquivos HTML compilados serão gerados no diretório `_site/`. Para visualizar o site interativamente com recarregamento automático durante o desenvolvimento, utilize:
+Para visualizar o site interativamente com recarregamento automático durante o desenvolvimento:
 
 ```bash
 quarto preview
 ```
-
----
 
 ## Referências Principais
 

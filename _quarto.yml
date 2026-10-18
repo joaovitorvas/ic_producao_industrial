@@ -1,8 +1,22 @@
 project:
   type: website
+  output-dir: _site
+  render:
+    - index.qmd
+    - analises/*.qmd
+    - anotacoes/*.qmd
+    - "!anotacoes/capitulo2.qmd"
+
+execute:
+  freeze: auto
+  warning: false
+  message: false
 
 website:
   title: "IC | Produção Industrial"
+  site-url: https://joaovitorvas.github.io/ic_producao_industrial/
+  repo-url: https://github.com/joaovitorvas/ic_producao_industrial
+  page-navigation: true
   navbar:
     left:
       - href: index.qmd
@@ -10,20 +24,27 @@ website:
       - text: "Análises"
         menu:
           - href: analises/01_exploratoria.qmd
-            text: "1. Exploratória"
+            text: "1. Exploratória e Tendências"
           - href: analises/02_controlesintetico.qmd
-            text: "2. Controle Sintético"
+            text: "2. Controle Sintético (Crise de 2014)"
       - text: "Anotações"
         menu:
           - href: anotacoes/variaveis_de_controle_sintetico.qmd
-            text: "Variáveis de Controle Sintético"
+            text: "Guia: Controle Sintético (Abadie, 2021)"
+    right:
+      - icon: github
+        href: https://github.com/joaovitorvas/ic_producao_industrial
+        aria-label: GitHub
+  page-footer:
+    left: "João Vítor Vasconcelos Lima — Iniciação Científica (IME-USP)"
+    right: "Orientação: Profª. Dra. Airlane Pereira Alencar"
 
-lang: pt
+lang: pt-BR
 format:
   html:
     theme: cosmo
     toc: true
     toc-location: left
+    toc-title: "Sumário"
     number-sections: true
     code-fold: false
-    self-contained: true
