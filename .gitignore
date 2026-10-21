@@ -19,5 +19,6 @@ _site/
 **/*.quarto_ipynb
 *.rmarkdown
 
+agents/
 
 /anotacoes/capitulo2.qmd

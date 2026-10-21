@@ -13,6 +13,8 @@ format:
 lang: pt-BR
 ---
 
+Este documento foi criado com auxílio de modelos de linguagem e foi integralmente baseado no artigo de Abadie (2021) "Using Synthetic Controls: Feasibility, Data Requirements, and Methodological Aspects" publicado no *Journal of Economic Literature*.
+
 # Introdução e Motivação: O Problema da Avaliação de Políticas Agregadas
 
 Na econometria aplicada e na estatística, frequentemente desejamos responder a perguntas causais sobre **intervenções agregadas** — isto é, choques econômicos, reformas institucionais ou políticas públicas que afetam uma única unidade macroeconômica (ou um número muito pequeno de unidades), como um país, um estado, uma região metropolitana ou um setor industrial inteiro. Exemplos clássicos incluem:
@@ -95,9 +97,9 @@ Em vez de fixar pesos arbitrários, Abadie e Gardeazabal (2003) e Abadie, Diamon
 
 Dadas constantes não negativas $v_1, \dots, v_k$ (que medem a importância relativa de cada um dos $k$ preditores), escolhemos $\mathbf{W}^*(\mathbf{V})$ resolvendo um problema de **otimização quadrática restrita**:
 
-$$\mathbf{W}^*(\mathbf{V}) = \arg\min_{\mathbf{W}} \|\mathbf{X}_1 - \mathbf{X}_0 \mathbf{W}\|_{\mathbf{V}} = \left( \sum_{h=1}^k v_h \left( X_{h1} - w_2 X_{h2} - \dots - w_{J+1} X_{h,J+1} \right)^2 \right)^{1/2}, \qquad (4)$$
+$$\mathbf{W}^*(\mathbf{V}) = \arg\min_{\mathbf{W} \in \Delta^J} \|\mathbf{X}_1 - \mathbf{X}_0 \mathbf{W}\|_{\mathbf{V}} = \arg\min_{\mathbf{W} \in \Delta^J} \sqrt{(\mathbf{X}_1 - \mathbf{X}_0 \mathbf{W})' \mathbf{V} (\mathbf{X}_1 - \mathbf{X}_0 \mathbf{W})} = \left( \sum_{h=1}^k v_h \left( X_{h1} - \sum_{j=2}^{J+1} w_j X_{hj} \right)^2 \right)^{1/2}, \qquad (4)$$
 
-sujeito a $w_j \ge 0$ e $\sum_{j=2}^{J+1} w_j = 1$.
+sujeito a $w_j \ge 0$ para todo $j \in \{2, \dots, J+1\}$ e $\sum_{j=2}^{J+1} w_j = 1$ (onde $\Delta^J$ denota o simplex padrão em $\mathbb{R}^J$). A matriz diagonal $\mathbf{V} = \text{diag}(v_1, \dots, v_k)$ é semidefinida positiva com entradas $v_h \ge 0$.
 
 Resta, contudo, a pergunta fundamental: **como escolher a matriz diagonal de pesos dos preditores $\mathbf{V} = \text{diag}(v_1, \dots, v_k)$?** O papel de $v_h$ é refletir o poder preditivo da característica $X_{h1}$ sobre a trajetória contrafactual $Y^N_{1t}$. Abadie (2021, Seção 3.2) destaca três abordagens:
 
@@ -117,7 +119,12 @@ Resta, contudo, a pergunta fundamental: **como escolher a matriz diagonal de pes
 
 Uma dúvida recorrente entre estudantes de estatística e economia é: **sob qual processo gerador de dados (PGD) o Controle Sintético é um estimador válido, e como ele se compara ao estimador de Diferenças-em-Diferenças (DiD)?**
 
-Abadie, Diamond e Hainmueller (2010) demonstram que o Controle Sintético é não-viesado se os dados seguirem um modelo auto-regressivo vetorial (VAR) e derivam uma **cota superior para o viés** quando o resultado potencial sem intervenção $Y^N_{jt}$ é gerado por um **Modelo de Fatores Lineares com Efeitos Fixos Interativos** (Bai, 2009):
+Abadie, Diamond e Hainmueller (2010) analisam as propriedades teóricas do estimador sob duas classes de processos geradores de dados para $Y^N_{jt}$:
+
+1. **Modelos Autorregressivos Vetoriais (VAR):** sob certas condições de regularidade e ajuste exato nos valores defasados, o estimador de controle sintético é **estritamente não-viesado**;
+2. **Modelos de Fatores Lineares com Efeitos Fixos Interativos (Bai, 2009):** o estimador é sujeito a viés em amostras finitas devido à presença de choques transitórios, mas os autores estabelecem formalmente uma **cota superior analítica para a magnitude do viés**.
+
+A seguir, focamos na formulação do Modelo de Fatores Lineares:
 
 $$Y^N_{jt} = \delta_t + \boldsymbol{\theta}_t \mathbf{Z}_j + \boldsymbol{\lambda}_t \boldsymbol{\mu}_j + \varepsilon_{jt}. \qquad (6)$$
 
@@ -126,14 +133,14 @@ Vamos destrinchar cada componente da equação $(6)$:
 - $\delta_t$: tendência temporal macroeconômica comum a todas as unidades (fator comum com carga constante igual a 1);
 - $\mathbf{Z}_j$: vetor $(r \times 1)$ de **covariáveis observadas** da unidade $j$ (não afetadas pelo tratamento), cujo impacto no tempo varia segundo o vetor de parâmetros $\boldsymbol{\theta}_t$ $(1 \times r)$;
 - $\boldsymbol{\mu}_j$: vetor $(F \times 1)$ de **características estruturais não observadas** (*cargas fatoriais latentes*, ou *factor loadings*) específicas da unidade $j$;
-- $\boldsymbol{\lambda}_t$: vetor $(1 \times F)$ de **fatores comuns não observados variantes no tempo** (choques globais, ciclos tecnológicos, ciclos de preços internacionais);
-- $\varepsilon_{jt}$: choque transitório idiossincrático (específico da unidade $j$ no instante $t$), com $\mathbb{E}[\varepsilon_{jt}] = 0$.
+- $\boldsymbol{\lambda}_t$: vetor $(1 \times F)$ de **fatores comuns não observados variantes no tempo** (choques macroeconômicos globais, ciclos tecnológicos, termos de troca);
+- $\varepsilon_{jt}$: choque transitório idiossincrático não observado (específico da unidade $j$ no instante $t$), com $\mathbb{E}[\varepsilon_{jt}] = 0$ e escala $\sigma_\varepsilon$.
 
 ::: {.callout-important}
 ## Por que o Controle Sintético generaliza o Diferenças-em-Diferenças (DiD)?
-No modelo tradicional de Diferenças-em-Diferenças (ou painel com efeitos fixos aditivos de unidade e tempo), impõe-se a restrição de que os fatores não observados têm efeito constante no tempo: $\boldsymbol{\lambda}_t = \boldsymbol{\lambda}$ para todo $t$. Sob essa restrição, unidades com as mesmas covariáveis observadas ($\mathbf{Z}_j = \mathbf{z}$) seguem obrigatoriamente **tendências paralelas** ($\delta_t + \boldsymbol{\theta}_t \mathbf{z} + \boldsymbol{\lambda}\boldsymbol{\mu}_j$).
+No modelo tradicional de Diferenças-em-Diferenças (ou painel com efeitos fixos aditivos de unidade e tempo), impõe-se a restrição de que os fatores não observados têm efeito constante no tempo: $\boldsymbol{\lambda}_t = \boldsymbol{\lambda}$ para todo $t$ (ver Bai, 2009). Sob essa restrição, unidades com as mesmas covariáveis observadas ($\mathbf{Z}_j = \mathbf{z}$) seguem obrigatoriamente **tendências paralelas** ($\delta_t + \boldsymbol{\theta}_t \mathbf{z} + \boldsymbol{\lambda}\boldsymbol{\mu}_j$).
 
-O modelo de fatores lineares da equação $(6)$ **relaxa a hipótese de tendências paralelas**: diferentes unidades podem responder com intensidades distintas ($\boldsymbol{\mu}_j$) aos mesmos choques macroeconômicos ($\boldsymbol{\lambda}_t$). Por exemplo, uma crise financeira global ($\lambda_t$) afeta o produto industrial do Brasil ($\mu_{\text{Brasil}}$) de forma diferente do que afeta a Suíça ($\mu_{\text{Suíça}}$).
+O modelo de fatores lineares da equação $(6)$ **relaxa a hipótese de tendências paralelas**: diferentes unidades podem responder com intensidades distintas ($\boldsymbol{\mu}_j$) aos mesmos choques macroeconômicos ($\boldsymbol{\lambda}_t$). Por exemplo, uma crise financeira global ($\boldsymbol{\lambda}_t$) afeta o produto industrial do Brasil ($\boldsymbol{\mu}_{\text{Brasil}}$) de forma diferente do que afeta a Suíça ($\boldsymbol{\mu}_{\text{Suíça}}$).
 :::
 
 ## A Intuição Algébrica da Cota de Viés (*Bias Bound*)
@@ -144,21 +151,21 @@ $$Y^N_{1t} - \sum_{j=2}^{J+1} w_j Y^N_{jt} = \boldsymbol{\theta}_t \underbrace{\
 
 Observe o que a equação $(7)$ revela:
 
-1. Se escolhermos pesos $\mathbf{W}^*$ que reproduzam perfeitamente tanto as características observadas ($\mathbf{Z}_1 = \sum_j w_j^* \mathbf{Z}_j$) quanto as cargas fatoriais latentes ($\boldsymbol{\mu}_1 = \sum_j w_j^* \boldsymbol{\mu}_j$), os dois primeiros termos desaparecem e o estimador é **exatamente não-viesado**!
-2. Contudo, $\boldsymbol{\mu}_1$ **não é observado**. Como podemos igualar algo que não vemos? A resposta de Abadie, Diamond e Hainmueller (2010) é brilhante: **um controle sintético que reproduz $\mathbf{Z}_1$ e acompanha a trajetória de $Y_{1t}$ durante um longo período pré-intervenção ($t = 1, \dots, T_0$) só consegue fazê-lo se também estiver igualando implicitamente $\boldsymbol{\mu}_1 \approx \sum_j w_j^* \boldsymbol{\mu}_j$!**
-3. A única maneira de o controle sintético igualar $Y_{1t}$ no pré-tratamento *sem* igualar $\boldsymbol{\mu}_1$ seria se os choques transitórios idiossincráticos $\varepsilon_{jt}$ compensassem exatamente a diferença estrutural $\boldsymbol{\lambda}_t(\boldsymbol{\mu}_1 - \sum_j w_j \boldsymbol{\mu}_j)$ período após período. Quando a escala dos choques transitórios ($\sigma_\varepsilon$) é pequena e o número de períodos pré-intervenção ($T_0$) é grande, a probabilidade dessa compensação espúria ocorrer converge para zero.
+1. Se escolhermos pesos $\mathbf{W}^*$ que reproduzam perfeitamente tanto as características observadas ($\mathbf{Z}_1 = \sum_j w_j^* \mathbf{Z}_j$) quanto as cargas fatoriais latentes ($\boldsymbol{\mu}_1 = \sum_j w_j^* \boldsymbol{\mu}_j$), os dois primeiros termos desaparecem e o estimador é **exatamente não-viesado** ($\mathbb{E}[\hat{\tau}_{1t} - \tau_{1t}] = 0$)!
+2. Contudo, $\boldsymbol{\mu}_1$ **não é observado** pelo pesquisador. Como podemos igualar algo que não vemos? A resposta de Abadie, Diamond e Hainmueller (2010) é elegante: **um controle sintético que reproduz $\mathbf{Z}_1$ e acompanha a trajetória de $Y_{1t}$ durante um longo período pré-intervenção ($t = 1, \dots, T_0$) só consegue fazê-lo se também estiver igualando implicitamente as cargas latentes $\boldsymbol{\mu}_1 \approx \sum_j w_j^* \boldsymbol{\mu}_j$!**
+3. A única maneira de o controle sintético igualar $Y_{1t}$ no pré-tratamento *sem* igualar $\boldsymbol{\mu}_1$ seria se os choques transitórios idiossincráticos $\varepsilon_{jt}$ compensassem exatamente a diferença estrutural $\boldsymbol{\lambda}_t(\boldsymbol{\mu}_1 - \sum_j w_j \boldsymbol{\mu}_j)$ período após período. Quando a escala dos choques transitórios ($\sigma_\varepsilon$) é moderada e o número de períodos pré-intervenção ($T_0$) é grande, a probabilidade dessa compensação espúria ocorrer decresce rapidamente.
 
-A partir desse resultado, Abadie, Diamond e Hainmueller (2010) demonstram que a cota superior do viés de $\hat{\tau}_{1t}$ depende:
+A partir desse resultado, Abadie, Diamond e Hainmueller (2010, Teorema 1) demonstram que, sob ajuste perfeito pré-intervenção ($\mathbf{X}_1 = \mathbf{X}_0 \mathbf{W}^*$), a cota superior do valor absoluto do viés de $\hat{\tau}_{1t}$ decresce com $1/\sqrt{T_0}$. Mais especificamente, a cota de viés:
 
-- **Inversamente de $T_0$** (número de períodos pré-intervenção): sob bom ajuste ($\mathbf{X}_1 \approx \mathbf{X}_0 \mathbf{W}^*$), quanto mais longo o período em que o controle sintético rastreia a unidade tratada, menor o limite de viés.
-- **Positivamente da volatilidade dos choques transitórios ($\sigma_\varepsilon$):** muito ruído idiossincrático facilita o *over-fitting* (ajustar ruído em vez de sinal estrutural $\boldsymbol{\mu}_1$).
-- **Positivamente do tamanho do *donor pool* ($J$) quando $T_0$ é fixo:** com doadores demais e $T_0$ curto, torna-se fácil encontrar combinações espúrias que ajustam os dados pré-intervenção mesmo com grandes discrepâncias em $\boldsymbol{\mu}_j$.
-- **Positivamente da dimensão de $\boldsymbol{\mu}_j$ (número de fatores não observados):** quanto mais fatores não observados existirem, maior a cota de viés.
+- **Diminui com a raiz de $T_0$ ($\propto 1/\sqrt{T_0}$):** sob bom ajuste, quanto mais longo o período em que o controle sintético rastreia a unidade tratada, menor o limite superior de viés;
+- **Cresce com a volatilidade dos choques transitórios ($\sigma_\varepsilon$):** muito ruído idiossincrático facilita o *over-fitting* (ajustar ruído transitório em vez de capturar o sinal estrutural $\boldsymbol{\mu}_1$);
+- **Cresce com o tamanho do *donor pool* ($J$) quando $T_0$ é fixo:** com doadores demais e $T_0$ curto, torna-se fácil encontrar combinações espúrias que ajustam os dados pré-intervenção mesmo com grandes discrepâncias em $\boldsymbol{\mu}_j$;
+- **Cresce com a dimensão de $\boldsymbol{\mu}_j$ (número $F$ de fatores não observados):** quanto mais fatores latentes existirem, maior a cota teórica de viés.
 
 ::: {.callout-warning}
-## Duas Lições Fundamentais sobre Viés e Seleção de Variáveis
-1. **$T_0$ grande não corrige ajuste ruim:** A cota de viés converge com $1/T_0$ *condicionada a* $\mathbf{X}_1 \approx \mathbf{X}_0 \mathbf{W}^*$. Se o controle sintético não reproduz a trajetória pré-tratamento da unidade tratada, o viés permanece elevado mesmo quando $T_0 \to \infty$.
-2. **Por que não devemos omitir covariáveis $\mathbf{Z}_j$:** Na equação $(6)$, qualquer preditor observável excluído de $\mathbf{Z}_j$ é mecanicamente absorvido dentro do vetor não observado $\boldsymbol{\mu}_j$. Isso aumenta o número de componentes de $\boldsymbol{\mu}_j$ e, consequentemente, **eleva a cota de viés**. Portanto, incluir preditores estruturais relevantes além dos valores passados de $Y_{jt}$ reduz a variância residual e protege contra *over-fitting*.
+## Duas Lições Fundamentais sobre Viés e Seleção de Variáveis (Abadie, 2021)
+1. **$T_0$ grande NÃO corrige ajuste pré-tratamento deficiente:** A cota de viés converge para zero com $1/\sqrt{T_0}$ sob a hipótese estrita de $\mathbf{X}_1 = \mathbf{X}_0 \mathbf{W}^*$. Em dados empíricos, temos quase sempre um ajuste aproximado ($\mathbf{X}_1 \approx \mathbf{X}_0 \mathbf{W}^*$). Conforme alertam Abadie (2021, p. 401) e Ferman e Pinto (2019, 2021), **vieses substanciais persistem mesmo quando $T_0 \to \infty$ se a qualidade do ajuste for ruim**. A aderência visual e quantitativa pré-tratamento é o pilar indispensável para sustentar a inferência causal.
+2. **Por que não devemos omitir covariáveis estruturais $\mathbf{Z}_j$:** Na equação $(6)$, qualquer preditor econômico observável excluído de $\mathbf{Z}_j$ é mecanicamente absorvido dentro do vetor não observado $\boldsymbol{\mu}_j$. Isso expande o número de fatores latentes $F$ e, consequentemente, **eleva a cota de viés**. Portanto, incluir preditores estruturais relevantes além dos valores passados de $Y_{jt}$ reduz a variância residual e protege contra *over-fitting*.
 :::
 
 ---
@@ -187,11 +194,17 @@ flowchart LR
     B --> C["Solução Única e Esparsa (W*)<br/>Máximo de k pesos positivos"]
 ```
 
-Em dimensões moderadas ($k$ preditores), devido à maldição da dimensionalidade, o ponto $\mathbf{X}_1$ costuma cair ligeiramente fora da **envoltória convexa** (*convex hull*) formada pelos pontos $\{\mathbf{X}_2, \dots, \mathbf{X}_{J+1}\}$. A minimização de $\|\mathbf{X}_1 - \mathbf{X}_0 \mathbf{W}\|_{\mathbf{V}}$ sujeita a $w_j \ge 0$ e $\sum w_j = 1$ equivale a **projetar geometricamente o ponto $\mathbf{X}_1$ sobre a face mais próxima do politopo convexo gerado pelas colunas de $\mathbf{X}_0$**. Se as colunas de $\mathbf{X}_0$ estiverem em posição geral, essa projeção cai sobre uma face definida por **no máximo $k$ vértices**, garantindo que a solução $\mathbf{W}^*$ seja única e tenha no máximo $k$ pesos estritamente positivos!
+A esparsidade dos pesos do Controle Sintético possui uma interpretação geométrica direta (Abadie, 2021, Seção 4):
+
+1. **Caso 1: $\mathbf{X}_1$ fora da envoltória convexa de $\mathbf{X}_0$ (cenário padrão na prática empírica):**
+   Devido à maldição da dimensionalidade com $k$ preditores contínuos, é comum que $\mathbf{X}_1$ caia ligeiramente fora da envoltória convexa (*convex hull*) gerada pelas colunas de $\mathbf{X}_0$. A minimização de $\|\mathbf{X}_1 - \mathbf{X}_0 \mathbf{W}\|_{\mathbf{V}}$ sujeita a $w_j \ge 0$ e $\sum w_j = 1$ projeta ortogonalmente o ponto $\mathbf{X}_1$ sobre a face mais próxima do politopo convexo formado pelas colunas de $\mathbf{X}_0$. Se as colunas de $\mathbf{X}_0$ estiverem em posição geral (isto é, nenhum conjunto de $m$ colunas, com $2 \le m \le k + 1$, estiver contido em um hiperplano afim de dimensão $m - 2$), essa projeção incide sobre uma face própria de dimensão no máximo $k - 1$, gerada por **no máximo $k$ vértices (unidades doadoras)**. Nesse caso, a solução $\mathbf{W}^*$ é **estritamente única e esparsa**, com no máximo $k$ pesos positivos.
+
+2. **Caso 2: $\mathbf{X}_1$ dentro da envoltória convexa de $\mathbf{X}_0$ (amostras com muitos doadores ou $k$ muito pequeno):**
+   Quando $\mathbf{X}_1$ pertence ao interior da envoltória convexa, o erro ótimo é nulo ($\mathbf{X}_1 = \mathbf{X}_0 \mathbf{W}^*$). Pelo Teorema de Carathéodory para conjuntos convexos em $\mathbb{R}^k$, **sempre existe pelo menos uma solução com no máximo $k + 1$ pesos positivos**. Contudo, nessa situação o conjunto de pesos minimizadores é tipicamente **infinito (não-único)**. Solucionadores numéricos padrão podem escolher arbitrariamente combinações dispersas que misturam unidades díspares distantes no espaço de atributos. É justamente essa multiplicidade que motivou o desenvolvimento do **Controle Sintético Penalizado** de Abadie e L'Hour (2021), detalhado na Seção @sec-extensoes.
 
 ::: {.callout-note}
 ## Esparsidade no Controle Sintético vs. LASSO
-No LASSO (regressão penalizada por norma $L_1$), a esparsidade é um artifício de regularização para evitar *over-fitting*, e a identidade individual das variáveis selecionadas raramente tem interpretação substantiva. No Controle Sintético, ocorre o oposto: **a identidade e a magnitude dos poucos doadores com peso positivo são informações cruciais** para que especialistas avaliem a plausibilidade do contrafactual e diagnostiquem a direção de eventuais vieses.
+No LASSO (regressão penalizada por norma $L_1$), a esparsidade é um artifício numérico de regularização para evitar *over-fitting*, e a identidade individual das variáveis selecionadas raramente tem interpretação substantiva. No Controle Sintético, ocorre o oposto: **a identidade e a magnitude dos poucos doadores com peso positivo são informações cruciais** para que especialistas avaliem a plausibilidade do contrafactual e diagnostiquem a direção de eventuais vieses.
 :::
 
 ---
@@ -238,9 +251,9 @@ Para que $\mathbf{X}_1 - \mathbf{X}_0 \mathbf{W}^* \approx \mathbf{0}$, o vetor 
 E se a unidade tratada for extrema no **nível** da variável de resultado $Y_{1t}$ (por exemplo, a maior ou a menor de toda a amostra), ou se as unidades tiverem tamanhos populacionais/industriais diferentes?
 
 1. **Reescalonamento prévio por tamanho:** Exigir que $\sum_{j=2}^{J+1} w_j = 1$ só faz sentido econômico se as variáveis forem intensivas (não escalarem com o porte da unidade, como PIB *per capita*, taxas, preços ou números-índice de base comum).
-2. **Desvios em relação à média pré-intervenção (Ferman e Pinto, 2021) ou Indexação pela Média Pré-Intervenção:** Quando há diferenças permanentes de nível entre as unidades no pré-tratamento, pode-se subtrair de cada unidade a sua própria média pré-intervenção:
+2. **Desvios em relação à média pré-intervenção (Ferman e Pinto, 2019, 2021) ou Indexação pela Média Pré-Intervenção:** Quando há diferenças permanentes de nível entre as unidades no pré-tratamento, pode-se subtrair de cada unidade a sua própria média pré-intervenção:
    $$\tilde{Y}_{jt} = Y_{jt} - \frac{1}{T_0} \sum_{h=1}^{T_0} Y_{jh}, \qquad \text{ou reescalonar por} \qquad \tilde{Y}^{\text{idx}}_{jt} = 100 \times \frac{Y_{jt}}{\frac{1}{T_0}\sum_{h=1}^{T_0} Y_{jh}}. \qquad (8)$$
-   Como destaca Abadie (2021, p. 411), medir o resultado em desvios (ou razão) em relação à média de **todo o período pré-intervenção** ($1, \dots, T_0$) elimina efeitos fixos de nível sem ancorar a série em um único ano arbitrário (que pode conter choques transitórios atípicos) e sem os problemas de escala do intercepto livre de Doudchenko e Imbens (2016) quando há múltiplas covariáveis.
+   Como destaca Abadie (2021, p. 411), quando a matriz $[\mathbf{X}_1 : \mathbf{X}_0]$ contém apenas os valores da variável de resultado pré-intervenção com pesos iguais, medir o resultado em desvios da média pré-tratamento é algebricamente equivalente à proposta de Doudchenko e Imbens (2016) de estimar um deslocamento constante (intercepto livre $\mu \mathbf{1}$). Contudo, quando o vetor de preditores inclui covariáveis adicionais de naturezas e unidades distintas (como inflação, escolaridade e investimento), permitir um intercepto aditivo uniforme em todo o vetor não faz sentido dimensional, ao passo que desviar apenas a variável dependente de sua média pré-tratamento preserva a integridade física e a interpretação econômica de todas as covariáveis estruturais.
 3. **Primeiras diferenças ($\Delta Y_{jt} = Y_{jt} - Y_{jt-1}$) ou taxas de crescimento ($100 \times \Delta Y_{jt}/Y_{jt-1}$):**
    - *Vantagem:* Aplicando o operador diferença à equação $(6)$, obtemos $\Delta Y^N_{jt} = \Delta \delta_t + \Delta \boldsymbol{\theta}_t \mathbf{Z}_j + \Delta \boldsymbol{\lambda}_t \boldsymbol{\mu}_j + \Delta \varepsilon_{jt}$. Se os fatores comuns $\boldsymbol{\lambda}_t$ variarem lentamente no tempo ($\Delta \boldsymbol{\lambda}_t$ pequeno), diferenciar ajuda a controlar o viés.
    - *Perigo (Alerta de Abadie, 2021, p. 412):* Se os choques idiossincráticos $\varepsilon_{jt}$ forem aproximadamente independentes no tempo, a variância do ruído diferenciado dobra: $\text{Var}(\Delta \varepsilon_{jt}) = 2\text{Var}(\varepsilon_{jt}) > \text{Var}(\varepsilon_{jt})$. Pela cota de viés da Seção @sec-teoria, inflar a variância do ruído aumenta o risco de *over-fitting* e pode **aumentar** o viés do Controle Sintético!
@@ -574,133 +587,23 @@ Ao conduzir o seu próprio estudo com Controle Sintético, percorra esta lista d
 - **Abadie, Alberto, Alexis Diamond, and Jens Hainmueller.** 2010. "Synthetic Control Methods for Comparative Case Studies: Estimating the Effect of California's Tobacco Control Program." *Journal of the American Statistical Association* 105 (490): 493–505.
 - **Abadie, Alberto, Alexis Diamond, and Jens Hainmueller.** 2015. "Comparative Politics and the Synthetic Control Method." *American Journal of Political Science* 59 (2): 495–510.
 - **Abadie, Alberto, and Javier Gardeazabal.** 2003. "The Economic Costs of Conflict: A Case Study of the Basque Country." *American Economic Review* 93 (1): 113–132.
+- **Abadie, Alberto, and Guido W. Imbens.** 2011. "Bias-Corrected Matching Estimators for Average Treatment Effects." *Journal of Business & Economic Statistics* 29 (1): 1–11.
 - **Abadie, Alberto, and Jérémy L'Hour.** 2021. "A Penalized Synthetic Control Estimator for Disaggregated Data." *Journal of the American Statistical Association* 116 (536): 1817–1834.
 - **Amjad, Muhammad, Devavrat Shah, and Dennis Shen.** 2018. "Robust Synthetic Control." *Journal of Machine Learning Research* 19 (22): 1–51.
 - **Arkhangelsky, Dmitry, Susan Athey, David A. Hirshberg, Guido W. Imbens, and Stefan Wager.** 2021. "Synthetic Difference-in-Differences." *American Economic Review* 111 (12): 4088–4118.
+- **Athey, Susan, Mohsen Bayati, Nikolay Doudchenko, Guido W. Imbens, and Khashayar Khosravi.** 2021. "Matrix Completion Methods for Causal Panel Data Models." *Journal of the American Statistical Association* 116 (536): 1716–1730.
 - **Athey, Susan, and Guido W. Imbens.** 2017. "The State of Applied Econometrics: Causality and Policy Evaluation." *Journal of Economic Perspectives* 31 (2): 3–32.
 - **Bai, Jushan.** 2009. "Panel Data Models with Interactive Fixed Effects." *Econometrica* 77 (4): 1229–1279.
 - **Ben-Michael, Eli, Avi Feller, and Jesse Rothstein.** 2021. "The Augmented Synthetic Control Method." *Journal of the American Statistical Association* 116 (536): 1789–1803.
+- **Card, David.** 1990. "The Impact of the Mariel Boatlift on the Miami Labor Market." *ILR Review* 43 (2): 245–257.
+- **Card, David, and Alan B. Krueger.** 1994. "Minimum Wages and Employment: A Case Study of the Fast-Food Industry in New Jersey and Pennsylvania." *American Economic Review* 84 (4): 772–793.
 - **Cattaneo, Matias D., Yinjie Feng, and Rocio Titiunik.** 2021. "Prediction Intervals for Synthetic Control Methods." *Journal of the American Statistical Association* 116 (536): 1865–1880.
 - **Chernozhukov, Victor, Kaspar Wüthrich, and Yinchu Zhu.** 2021. "An Exact and Robust Conformal Inference Method for Counterfactual and Synthetic Controls." *Journal of the American Statistical Association* 116 (536): 1849–1864.
 - **Doudchenko, Nikolay, and Guido W. Imbens.** 2016. "Balancing, Regression, Difference-in-Differences and Synthetic Control Methods: A Synthesis." *NBER Working Paper* 22791.
 - **Ferman, Bruno, and Cristine Pinto.** 2021. "Synthetic Controls with Imperfect Pre-Treatment Fit." *Quantitative Economics* 12 (4): 1197–1221.
 - **Firpo, Sergio, and Vitor Possebom.** 2018. "Synthetic Control Method: Inference, Sensitivity Analysis and Confidence Sets." *Journal of Causal Inference* 6 (2): 20160026.
-```{r}
-#| message: false
-#| warning: false
-
-# Pesos das unidades doadoras (equivalente à Tabela 2 de Abadie, 2021)
-modelo_california %>%
-  grab_unit_weights() %>%
-  filter(weight > 0.001) %>%
-  arrange(desc(weight)) %>%
-  mutate(weight = round(weight, 3)) %>%
-  kable(
-    col.names = c("Estado Doador", "Peso (w_j*)"),
-    caption   = "Estados que Compõem a Califórnia Sintética (Apenas 5 dos 38 Doadores)"
-  )
-
-# Visualização gráfica dos pesos das unidades e dos preditores
-modelo_california %>% plot_weights()
-```
-
-Dos 38 estados no *donor pool*, apenas **5 estados** (Utah, Nevada, Montana, Colorado e Connecticut) recebem peso positivo — exatamente limitado pelo número de preditores!
-
-## Passo 4: Trajetória Contrafactual e Estimativa do Efeito ($\hat{\tau}_{1t}$)
-
-```{r}
-#| message: false
-#| warning: false
-
-# Trajetória Real vs. Sintética (equivalente à Figura 1B de Abadie, 2021)
-modelo_california %>%
-  plot_trends() +
-  labs(
-    title    = "Trajetória das Vendas de Cigarros: Califórnia Real vs. Califórnia Sintética",
-    subtitle = "Ajuste pré-intervenção (1970–1988) e efeito causal pós-Proposição 99 (1989–2000)",
-    x = "Ano", y = "Maços per capita"
-  ) +
-  theme_minimal()
-
-# Gráfico do hiato estimado: tau_1t = Y_1t - Y_1t^N
-modelo_california %>%
-  plot_differences() +
-  labs(
-    title    = "Efeito Causal Estimado (Gap = Califórnia Real - Califórnia Sintética)",
-    subtitle = "Em 2000, o consumo per capita na Califórnia era cerca de 26 maços menor que no contrafactual",
-    x = "Ano", y = "Diferença em maços per capita"
-  ) +
-  theme_minimal()
-```
-
-## Passo 5: Inferência por Permutação (Placebos no Espaço e Razão de MSPE)
-
-Por fim, executamos a inferência baseada no desenho (Seção @sec-inferencia), comparando o efeito da Califórnia com os 38 placebos no espaço e ordenando a razão entre o erro pós e pré-intervenção:
-
-```{r}
-#| message: false
-#| warning: false
-
-# Gráfico de Placebos no Espaço (com poda automática de placebos extremos no pré-período)
-modelo_california %>%
-  plot_placebos(prune = TRUE) +
-  labs(
-    title    = "Teste de Placebos no Espaço (In-Space Placebos)",
-    subtitle = "Califórnia (vermelho) vs. placebos nos estados doadores com bom ajuste pré-1988 (cinza)",
-    x = "Ano", y = "Gap (Real - Sintético)"
-  ) +
-  theme_minimal()
-
-# Ranking da Razão MSPE Pós / Pré
-modelo_california %>%
-  plot_mspe_ratio() +
-  labs(
-    title = "Distribuição de Permutação da Razão MSPE (Pós / Pré-1988)",
-    x = "Estado", y = "Razão MSPE"
-  ) +
-  theme_minimal()
-
-# Tabela dos 10 primeiros colocados no teste exato de Fisher
-modelo_california %>%
-  grab_significance() %>%
-  slice_head(n = 10) %>%
-  mutate(across(where(is.numeric), ~ round(.x, 4))) %>%
-  kable(caption = "Top 10 Unidades na Distribuição de Permutação da Razão MSPE")
-```
-
-A Califórnia ocupa o **1º lugar** entre todas as 39 unidades ($J + 1 = 39$), gerando um *p-valor* exato de Fisher igual a $1/39 \approx 0{,}0256$ ($2{,}56\%$). Ou seja, se atribuíssemos a intervenção ao acaso a qualquer estado da amostra, a probabilidade de observar uma razão de descolamento pós/pré tão grande quanto a da Califórnia seria de apenas $2{,}56\%$.
-
----
-
-# Checklist de Bolso para o Pesquisador Aplicado
-
-Ao conduzir o seu próprio estudo com Controle Sintético, percorra esta lista de verificação antes de reportar os resultados:
-
-- [ ] **Escala e envoltória convexa:** A variável de resultado $Y_{jt}$ está em escala comparável entre unidades (*per capita*, taxas ou índice normalizado pela média pré-tratamento)? A unidade tratada está dentro da envoltória convexa dos doadores na tabela de balanço?
-- [ ] **Higiene do *donor pool*:** Foram excluídas todas as unidades que sofreram intervenções semelhantes, grandes choques idiossincráticos ou *spillovers* diretos severos? As unidades restantes possuem características estruturais compatíveis para evitar viés de interpolação?
-- [ ] **Datação e antecipação:** A data $T_0$ foi posicionada *antes* de qualquer reação antecipada dos agentes ou início preliminar do choque?
-- [ ] **Qualidade do ajuste pré-tratamento:** O controle sintético acompanha a trajetória de $Y_{1t}$ sem viés sistemático ao longo de toda a janela $1, \dots, T_0$ (especialmente nos períodos imediatamente anteriores a $T_0$)?
-- [ ] **Três pilares de validação reportados:**
-  1. Tabela de balanço ($\mathbf{X}_1$, $\mathbf{X}_0\mathbf{W}^*$, média simples) e tabela de pesos esparsos ($\mathbf{W}^*$);
-  2. Inferência por placebos no espaço e ranking da razão de RMSPE/MSPE ($r_j$);
-  3. Testes de diagnóstico: placebo no tempo (*backdating*) e sensibilidade *leave-one-out* (LOO).
-
----
-
-# Referências Bibliográficas
-
-- **Abadie, Alberto.** 2021. "Using Synthetic Controls: Feasibility, Data Requirements, and Methodological Aspects." *Journal of Economic Literature* 59 (2): 391–425. <https://doi.org/10.1257/jel.20191450>
-- **Abadie, Alberto, Alexis Diamond, and Jens Hainmueller.** 2010. "Synthetic Control Methods for Comparative Case Studies: Estimating the Effect of California's Tobacco Control Program." *Journal of the American Statistical Association* 105 (490): 493–505.
-- **Abadie, Alberto, Alexis Diamond, and Jens Hainmueller.** 2015. "Comparative Politics and the Synthetic Control Method." *American Journal of Political Science* 59 (2): 495–510.
-- **Abadie, Alberto, and Javier Gardeazabal.** 2003. "The Economic Costs of Conflict: A Case Study of the Basque Country." *American Economic Review* 93 (1): 113–132.
-- **Abadie, Alberto, and Jérémy L'Hour.** 2021. "A Penalized Synthetic Control Estimator for Disaggregated Data." *Journal of the American Statistical Association* 116 (536): 1817–1834.
-- **Amjad, Muhammad, Devavrat Shah, and Dennis Shen.** 2018. "Robust Synthetic Control." *Journal of Machine Learning Research* 19 (22): 1–51.
-- **Arkhangelsky, Dmitry, Susan Athey, David A. Hirshberg, Guido W. Imbens, and Stefan Wager.** 2021. "Synthetic Difference-in-Differences." *American Economic Review* 111 (12): 4088–4118.
-- **Athey, Susan, and Guido W. Imbens.** 2017. "The State of Applied Econometrics: Causality and Policy Evaluation." *Journal of Economic Perspectives* 31 (2): 3–32.
-- **Bai, Jushan.** 2009. "Panel Data Models with Interactive Fixed Effects." *Econometrica* 77 (4): 1229–1279.
-- **Ben-Michael, Eli, Avi Feller, and Jesse Rothstein.** 2021. "The Augmented Synthetic Control Method." *Journal of the American Statistical Association* 116 (536): 1789–1803.
-- **Cattaneo, Matias D., Yinjie Feng, and Rocio Titiunik.** 2021. "Prediction Intervals for Synthetic Control Methods." *Journal of the American Statistical Association* 116 (536): 1865–1880.
-- **Chernozhukov, Victor, Kaspar Wüthrich, and Yinchu Zhu.** 2021. "An Exact and Robust Conformal Inference Method for Counterfactual and Synthetic Controls." *Journal of the American Statistical Association* 116 (536): 1849–1864.
-- **Doudchenko, Nikolay, and Guido W. Imbens.** 2016. "Balancing, Regression, Difference-in-Differences and Synthetic Control Methods: A Synthesis." *NBER Working Paper* 22791.
-- **Ferman, Bruno, and Cristine Pinto.** 2021. "Synthetic Controls with Imperfect Pre-Treatment Fit." *Quantitative Economics* 12 (4): 1197–1221.
-- **Firpo, Sergio, and Vitor Possebom.** 2018. "Synthetic Control Method: Inference, Sensitivity Analysis and Confidence Sets." *Journal of Causal Inference* 6 (2): 20160026.
+- **Fisher, Ronald A.** 1935. *The Design of Experiments*. Oliver and Boyd: Edinburgh.
+- **Heckman, James J., and V. Joseph Hotz.** 1989. "Choosing Among Alternative Nonexperimental Methods for Estimating the Impact of Social Programs: The Case of Manpower Training." *Journal of the American Statistical Association* 84 (408): 862–874.
+- **Rubin, Donald B.** 1973. "Matching to Remove Bias in Large Pair-Matched Samples." *Biometrics* 29 (1): 159–183.
+- **Rubin, Donald B.** 1974. "Estimating Causal Effects of Treatments in Randomized and Nonrandomized Studies." *Journal of Educational Psychology* 66 (5): 688–701.
+- **Rubin, Donald B.** 1980. "Randomization Analysis of Experimental Data: The Fisher Randomization Test Comment." *Journal of the American Statistical Association* 75 (371): 591–593.

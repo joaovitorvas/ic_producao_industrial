@@ -70,7 +70,7 @@ modelo_p2 <- lm(y ~ t + t2)
 pred_p2 <- predict(modelo_p2)
 
 # Logaritmo
-modelo_log <- lm(ln_y ~ ln_t)
+modelo_log <- lm(y ~ ln_t)
 pred_log <- exp(predict(modelo_log))
 
 # Potência
