@@ -138,6 +138,8 @@ legend("bottomright",
 
 O modelo polinomial de 2º grau apresentou as melhores medidas de acuracidade, sendo o escolhido para representar a tendência da série temporal da produção industrial brasileira.
 
+OBS: Usar uma regressão polinomial de grau maior que 2 pode levar a problemas de sobreajuste (overfitting), onde o modelo se ajusta muito bem aos dados históricos, mas perde capacidade de generalização para previsões futuras.
+
 ## Referências usadas
 
 1. Material do Marcelo Menezes da UFSC: [INE 7001 - ESTATÍSTICA PARA ADMINISTRADORES I](https://www.inf.ufsc.br/~marcelo.menezes.reis/Cap4.pdf)

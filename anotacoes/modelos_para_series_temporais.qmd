@@ -1,0 +1,217 @@
+---
+title: "Fundamentos e Modelos para Séries Temporais"
+author: "João Vitor Vasconcelos Lima (IC - IME-USP)"
+format: html
+---
+
+> **Nota bibliográfica:** Este documento sintetiza os conceitos fundamentais de processos estocásticos para séries temporais, fundamentando-se rigorosamente na obra clássica do Prof. Pedro A. Morettin e Clélio M. C. Toloi (*Análise de Séries Temporais*).
+
+---
+
+## Introdução: O que é uma Série Temporal?
+
+Uma **série temporal** é uma coleção de observações indexadas sequencialmente no tempo. Matematicamente, consideramos que os dados observados constituem uma realização empírica de um **processo estocástico** subjacente.
+
+A modelagem estatística em séries temporais busca:
+1. **Compreender o mecanismo gerador dos dados:** identificar tendências, sazonalidades e estruturas de dependência serial;
+2. **Previsão estatística:** estimar valores futuros $P(Z_{t+h} \mid \mathcal{F}_t)$ com base no histórico de informações disponíveis até o instante $t$;
+3. **Avaliação de intervenções e quebras:** subsidiar desenhos de identificação e inferência causal.
+
+---
+
+## Processos Estocásticos
+
+### Definição Formal
+
+Seja $(\Omega, \mathcal{A}, P)$ um espaço de probabilidade e seja $\mathcal{T}$ um conjunto arbitrário de índices temporais. 
+
+::: {.callout-note appearance="simple"}
+### Definição: Processo Estocástico
+Um **processo estocástico** é uma família de variáveis aleatórias reais definidas no mesmo espaço de probabilidade e indexadas por $t$:
+$$ Z = \{Z(t), t \in \mathcal{T}\} $$
+:::
+
+- Se o índice temporal for discreto ($\mathcal{T} = \mathbb{Z} = \{\dots, -2, -1, 0, 1, 2, \dots\}$), denotamos habitualmente por $\{Z_t, t \in \mathbb{Z}\}$.
+- Se o índice temporal for contínuo ($\mathcal{T} = \mathbb{R}$ ou um intervalo $[a, b]$), denotamos por $\{Z(t), t \in \mathcal{T}\}$.
+
+Formalmente, a variável $Z(t, \omega)$ é uma função de dois argumentos: o instante temporal $t \in \mathcal{T}$ e o evento elementar $\omega \in \Omega$.
+
+---
+
+### O Conceito de Trajetória e o "Ensemble"
+
+A natureza bidimensional de $Z(t, \omega)$ divide a interpretação em duas perspectivas complementares:
+
+1. **Tempo fixado ($t = t_0$):** $Z(t_0, \cdot)$ é uma variável aleatória usual que assume valores de acordo com uma distribuição de probabilidade marginal.
+2. **Cenário fixado ($\omega = \omega_0$):** $Z(\cdot, \omega_0)$ é uma função determinística do tempo $t$. Esta função representa uma **realização**, **trajetória** ou **caminho amostral** do processo estocástico.
+
+O conjunto de todas as realizações teóricas possíveis associadas a cada $\omega \in \Omega$ é denominado **ensemble**.
+
+> **O Desafio Central da Inferência em Séries Temporais:**  
+> Na inferência estatística tradicional com dados independentes e identicamente distribuídos (i.i.d.), observamos múltiplas amostras independentes da mesma distribuição. Em séries macroeconômicas (como a Produção Industrial Brasileira - PIM-PF), o processo histórico ocorre apenas uma vez: dispomos de **uma única realização finita** $\{z_1, z_2, \dots, z_N\}$ do *ensemble*.  
+> Para viabilizar inferência estatística consistente a partir de uma única trajetória observada, precisamos impor hipóteses de regularidade sobre o processo, nomeadamente a **estacionariedade** e a **ergodicidade** (que assegura que médias temporais convirjam para esperanças do processo).
+
+---
+
+## Especificação e Momentos de um Processo Estocástico
+
+### Distribuições Finito-Dimensionais
+
+A caracterização probabilística completa de um processo $Z = \{Z(t), t \in \mathcal{T}\}$ requer o conhecimento da distribuição conjunta para qualquer conjunto finito de instantes temporais $t_1, t_2, \dots, t_n \in \mathcal{T}$:
+
+$$ F(z_1, \dots, z_n ; t_1, \dots, t_n) = P\bigl(Z(t_1) \le z_1, \dots, Z(t_n) \le z_n\bigr) $$
+
+Pelo Teorema de Consistência de Kolmogorov, essa família de funções de distribuição define univocamente um processo estocástico se satisfizer as condições de:
+- **Simetria:** Invariância por permutação arbitrária dos índices;
+- **Compatibilidade:** Marginais de ordens inferiores recuperadas integrando as demais variáveis até o infinito.
+
+---
+
+### Processos de Segunda Ordem
+
+Na prática empírica, raramente conhecemos as distribuições conjuntas de ordens elevadas. Concentramos o estudo na classe dos **processos estocásticos de segunda ordem** — aqueles cujos dois primeiros momentos existem e são finitos: $E[Z^2(t)] < \infty, \forall t \in \mathcal{T}$.
+
+Estes processos são caracterizados por três funções estruturais:
+
+1. **Função Média:**
+   $$ \mu(t) = E[Z(t)] $$
+2. **Função de Variância:**
+   $$ V(t) = \mathrm{Var}(Z(t)) = E\bigl[(Z(t) - \mu(t))^2\bigr] = \gamma(t, t) $$
+3. **Função de Autocovariância (f.a.c.v.):**
+   $$ \gamma(t_1, t_2) = \mathrm{Cov}(Z(t_1), Z(t_2)) = E\bigl[\bigl(Z(t_1) - \mu(t_1)\bigr)\bigl(Z(t_2) - \mu(t_2)\bigr)\bigr] $$
+
+---
+
+## Estacionariedade
+
+A hipótese de estacionariedade traduz a ideia de estabilidade estocástica: o comportamento probabilístico da série não muda com o deslocamento na origem dos tempos.
+
+### Estacionariedade Estrita (Forte)
+
+::: {.callout-important appearance="simple"}
+### Definição: Estacionariedade Estrita
+Um processo estocástico $\{Z(t), t \in \mathcal{T}\}$ é **estritamente estacionário** se a distribuição de probabilidade conjunta de $(Z(t_1), \dots, Z(t_n))$ for idêntica à distribuição de $(Z(t_1 + \tau), \dots, Z(t_n + \tau))$, para quaisquer $t_1, \dots, t_n \in \mathcal{T}$ e qualquer deslocamento $\tau$:
+$$ F(z_1, \dots, z_n ; t_1 + \tau, \dots, t_n + \tau) = F(z_1, \dots, z_n ; t_1, \dots, t_n) $$
+:::
+
+**Consequências:**
+- A média e a variância são constantes em relação ao tempo:
+  $$ \mu(t) = \mu \quad \text{e} \quad \mathrm{Var}(Z(t)) = \sigma^2, \quad \forall t \in \mathcal{T} $$
+- A covariância entre dois instantes depende exclusivamente da defasagem (lag) temporal $\tau = t_2 - t_1$:
+  $$ \gamma(t_1, t_2) = \gamma(t_1 - t_2, 0) \equiv \gamma(\tau) $$
+
+---
+
+### Estacionariedade Fraca (Ampla ou de Segunda Ordem)
+
+Como a estacionariedade estrita é excessivamente exigente para séries econômicas reais, adota-se comumente a **estacionariedade fraca**:
+
+::: {.callout-note appearance="simple"}
+### Definição: Estacionariedade Fraca
+Um processo de segunda ordem $\{Z_t, t \in \mathbb{Z}\}$ é dito **fracamente estacionário** se satisfizer três condições:
+1. $E[Z_t] = \mu$ (média constante no tempo);
+2. $E[Z_t^2] < \infty$ (segundo momento finito em todo $t$);
+3. $\mathrm{Cov}(Z_t, Z_{t+\tau}) = \gamma(\tau)$ independe de $t$, dependendo unicamente da defasagem temporal $\tau$.
+:::
+
+---
+
+### Processos Gaussianos
+
+::: {.callout-tip appearance="simple"}
+### Definição: Processo Gaussiano
+Um processo $\{Z(t), t \in \mathcal{T}\}$ é dito **Gaussiano** se qualquer subconjunto finito $(Z(t_1), \dots, Z(t_n))'$ tiver distribuição Normal multivariada.
+:::
+
+**Resultado Teórico Fundamental:**  
+Como a distribuição normal multivariada é totalmente determinada pelo seu vetor de médias e pela matriz de covariâncias, para processos Gaussianos:
+$$ \text{Estacionariedade Fraca} \iff \text{Estacionariedade Estrita} $$
+
+---
+
+## Autocovariância, Autocorrelação e Continuidade
+
+### Propriedades da Função de Autocovariância
+
+Seja $\{X_t, t \in \mathbb{Z}\}$ um processo estacionário com média $\mu$ e autocovariância $\gamma_\tau = E[(X_t - \mu)(X_{t+\tau} - \mu)]$. Valem as seguintes propriedades (Morettin & Toloi):
+
+1. **Variância positiva:** $\gamma_0 = \mathrm{Var}(X_t) \ge 0$;
+2. **Simetria:** $\gamma_{-\tau} = \gamma_\tau$ (a dependência serial depende da distância temporal, não do sentido cronológico);
+3. **Limitação:** $|\gamma_\tau| \le \gamma_0$ para todo $\tau$ (pela desigualdade de Cauchy-Schwarz);
+4. **Não-negativa definida:** Para quaisquer coeficientes $a_1, \dots, a_n \in \mathbb{R}$ e instantes $t_1, \dots, t_n \in \mathbb{Z}$:
+   $$ \sum_{j=1}^n \sum_{k=1}^n a_j a_k \, \gamma(t_j - t_k) \ge 0 $$
+
+---
+
+### Função de Autocorrelação (FAC)
+
+A **Função de Autocorrelação (FAC)**, denotada por $\rho_\tau$, é a versão adimensional da autocovariância:
+
+$$ \rho_\tau = \frac{\gamma_\tau}{\gamma_0} = \frac{\mathrm{Cov}(X_t, X_{t+\tau})}{\sqrt{\mathrm{Var}(X_t)\mathrm{Var}(X_{t+\tau})}} $$
+
+**Propriedades fundamentais:**
+- $\rho_0 = 1$;
+- $\rho_{-\tau} = \rho_\tau$;
+- $-1 \le \rho_\tau \le 1, \quad \forall \tau \in \mathbb{Z}$.
+
+---
+
+### Continuidade em Média Quadrática
+
+Para processos a tempo contínuo $\{X(t), t \in \mathbb{R}\}$, o conceito adequado de continuidade analítica baseia-se na convergência em média quadrática:
+
+::: {.callout-note appearance="simple"}
+### Definição: Continuidade em m.q.
+Um processo de segunda ordem é contínuo em média quadrática no ponto $t_0$ se:
+$$ \lim_{t \to t_0} E\bigl[|X(t) - X(t_0)|^2\bigr] = 0 $$
+:::
+
+- **Teorema de Equivalência:** $\gamma(\tau)$ é contínua em $\tau = 0 \iff X(t)$ é contínuo em m.q. para todo $t \in \mathbb{R}$.
+- **Ressalva Pedagógica:** A continuidade em m.q. refere-se à convergência de momentos do processo e **não garante** que as trajetórias individuais $X(t, \omega_0)$ sejam funções contínuas.
+
+---
+
+## Modelos Estocásticos Fundamentais
+
+### Ruído Branco (White Noise)
+
+O ruído branco constitui o bloco elementar (choques estocásticos não previsíveis) para construir modelos mais estruturados.
+
+::: {.callout-note appearance="simple"}
+### Definição: Ruído Branco Fraco
+Uma sequência $\{\varepsilon_t, t \in \mathbb{Z}\}$ é um **ruído branco** com média zero e variância $\sigma^2$, denotado por $\varepsilon_t \sim \mathrm{RB}(0, \sigma^2)$, se:
+$$ E[\varepsilon_t] = 0, \quad \mathrm{Var}(\varepsilon_t) = \sigma^2, \quad \mathrm{Cov}(\varepsilon_t, \varepsilon_s) = 0 \quad (\forall t \neq s) $$
+Sua função de autocorrelação teórica é dada por:
+$$ \rho_\tau = \begin{cases} 1, & \tau = 0 \\ 0, & \tau \neq 0 \end{cases} $$
+:::
+
+- **Ruído Branco Estrito (i.i.d.):** Quando os termos são mutuamente independentes ($\varepsilon_t \overset{i.i.d.}{\sim} (0, \sigma^2)$).
+- **Ruído Branco Gaussiano:** Se $\varepsilon_t \overset{i.i.d.}{\sim} N(0, \sigma^2)$, a ausência de autocorrelação implica independência estrita.
+
+---
+
+### Passeio Aleatório (Random Walk)
+
+Seja $\{\varepsilon_t\}_{t \ge 1}$ um ruído branco i.i.d. com média 0 e variância $\sigma^2$. O processo definido pela soma cumulativa:
+
+$$ X_t = \sum_{k=1}^t \varepsilon_k = X_{t-1} + \varepsilon_t, \quad (X_0 = 0) $$
+
+é denominado **Passeio Aleatório**.
+
+**Não Estacionariedade do Passeio Aleatório:**
+- **Média:** $E[X_t] = 0$;
+- **Variância:** $\mathrm{Var}(X_t) = t\sigma^2 \to \infty$ quando $t \to \infty$;
+- **Autocovariância:** Para $s \le t$, $\mathrm{Cov}(X_s, X_t) = s\sigma^2$, resultando na autocorrelação:
+  $$ \rho(s, t) = \sqrt{\frac{s}{t}} $$
+Como a variância explode com o tempo e a correlação depende do instante cronológico, o passeio aleatório é **não estacionário** (processo integrado de ordem 1, $I(1)$).
+
+---
+
+### Movimento Browniano Padrão (Processo de Wiener)
+
+O análogo contínuo do passeio aleatório é o **Movimento Browniano Padrão** $\{W(t), t \ge 0\}$:
+1. $W(0) = 0$ com probabilidade 1;
+2. **Incrementos independentes:** Para $0 \le t_1 < t_2 < \dots < t_k$, os incrementos $W(t_2) - W(t_1), \dots$ são independentes;
+3. **Incrementos normais e estacionários:** $W(t) - W(s) \sim N(0, t - s)$ para $0 \le s < t$;
+4. $W(t) \sim N(0, t)$, com autocovariância $\gamma(s, t) = \min(s, t)$;
+5. As trajetórias $W(t, \omega)$ são contínuas em quase toda parte, mas **em nenhum ponto diferenciáveis**.

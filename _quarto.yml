@@ -31,6 +31,10 @@ website:
         menu:
           - href: anotacoes/variaveis_de_controle_sintetico.qmd
             text: "Guia: Controle Sintético (Abadie, 2021)"
+          - href: anotacoes/modelos_para_series_temporais.qmd
+            text: "Modelos para Séries Temporais"  
+          - href: "anotacoes/modelos_arima.qmd"
+            text: "Modelos ARIMA"  
     right:
       - icon: github
         href: https://github.com/joaovitorvas/ic_producao_industrial

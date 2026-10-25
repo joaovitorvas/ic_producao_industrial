@@ -1,0 +1,212 @@
+---
+title: "Modelos Lineares para Séries Temporais: Família ARIMA e SARIMA"
+author: "João Vitor Vasconcelos Lima (IC - IME-USP)"
+format: html
+---
+
+> **Referência Central:** Morettin, P. A., & Toloi, C. M. C. *Análise de Séries Temporais: Modelos Lineares Univariados*. Blucher / Associação Brasileira de Estatística (ABE).
+
+---
+
+## Contexto e Motivação no Projeto
+
+No estudo empírico da **Pesquisa Industrial Mensal — Produção Física (PIM-PF / IBGE)**, as séries temporais de produção apresentam tipicamente:
+- Tendências estocásticas de longo prazo (não estacionariedade em nível);
+- Sazonalidade mensal acentuada ($s = 12$);
+- Dependência temporal com choques que persistem ao longo do tempo.
+
+A classe de modelos lineares univariados desenvolvida por Box & Jenkins e formalizada no Brasil por **Morettin & Toloi** fornece o arcabouço matemático necessário para modelar a dinâmica dessas séries e detectar quebras estruturais.
+
+---
+
+## O Teorema da Decomposição de Wold e Processos Lineares
+
+O fundamento matemático para os modelos lineares de séries temporais estacionárias é o **Teorema de Wold (1938)**.
+
+::: {.callout-note appearance="simple"}
+### Teorema de Decomposição de Wold
+Todo processo fracamente estacionário e puramente não determinístico $\{X_t, t \in \mathbb{Z}\}$ com média zero pode ser expresso como uma média móvel de ordem infinita de inovações não correlacionadas:
+$$ X_t = \sum_{j=0}^{\infty} \psi_j \varepsilon_{t-j}, \quad \text{com } \psi_0 = 1 \text{ e } \sum_{j=0}^{\infty} \psi_j^2 < \infty $$
+onde $\varepsilon_t \sim \mathrm{RB}(0, \sigma_\varepsilon^2)$ representa a sequência de choques (ruído branco).
+:::
+
+Como um modelo com infinitos coeficientes $\psi_j$ não é estimável em amostras finitas, a metodologia Box-Jenkins aproxima a sequência $\{\psi_j\}_{j=0}^\infty$ pela razão de dois polinômios de ordens finitas $p$ e $q$, resultando na classe **ARMA($p, q$)**.
+
+---
+
+## Notação Operacional
+
+Para manipulação algébrica das equações de séries temporais, emprega-se o **Operador de Defasagem** (*Backshift Operator*) $B$:
+$$ B^k X_t = X_{t-k}, \quad k \in \mathbb{Z} $$
+
+Operador de diferença ordinária ($\Delta$):
+$$ \Delta X_t = X_t - X_{t-1} = (1 - B)X_t $$
+Diferença de ordem $d$: $\Delta^d = (1 - B)^d$.
+
+Operador de diferença sazonal com período $s$:
+$$ \Delta_s X_t = X_t - X_{t-s} = (1 - B^s)X_t $$
+
+---
+
+## O Modelo Autorregressivo: AR($p$)
+
+### Definição e Polinômio Característico
+
+Um processo $\{X_t\}$ segue um modelo autorregressivo de ordem $p$ ($\mathrm{AR}(p)$) se o valor atual for explicado por uma combinação linear de suas $p$ observações passadas, somada a um ruído branco contemporâneo:
+
+$$ X_t = c + \phi_1 X_{t-1} + \phi_2 X_{t-2} + \dots + \phi_p X_{t-p} + \varepsilon_t $$
+
+Usando o operador $B$:
+$$ \Phi(B) X_t = c + \varepsilon_t $$
+onde $\Phi(B) = 1 - \phi_1 B - \phi_2 B^2 - \dots - \phi_p B^p$.
+
+---
+
+### Condição de Estacionariedade
+
+::: {.callout-important appearance="simple"}
+### Teorema de Estacionariedade do AR($p$) (Morettin & Toloi)
+O processo $\mathrm{AR}(p)$ é fracamente estacionário se, e somente se, todas as raízes do polinômio característico associado:
+$$ \Phi(z) = 1 - \phi_1 z - \phi_2 z^2 - \dots - \phi_p z^p = 0 $$
+estiverem estritamente **fora do círculo unitário complexo**, isto é:
+$$ |z_k| > 1, \quad \forall k \in \{1, \dots, p\} $$
+*(De forma equivalente, as raízes do polinômio em termos de autovalores $\lambda^p - \sum_{i=1}^p \phi_i \lambda^{p-i} = 0$ devem estar estritamente dentro do círculo unitário, $|\lambda| < 1$).*
+:::
+
+**Exemplo AR(1):** $X_t = \phi X_{t-1} + \varepsilon_t$.  
+- Raiz: $1 - \phi z = 0 \implies z = 1/\phi$.  
+- Condição de estacionariedade: $|1/\phi| > 1 \iff |\phi| < 1$.  
+- Variância: $\gamma_0 = \frac{\sigma_\varepsilon^2}{1 - \phi^2}$.  
+- FAC: $\rho_\tau = \phi^\tau$ (decaimento exponencial suave se $\phi > 0$; oscilação senoidal amortecida se $\phi < 0$).
+
+---
+
+### Equações de Yule-Walker
+
+Multiplicando a equação do $\mathrm{AR}(p)$ por $X_{t-k}$ ($k \ge 1$) e tomando esperanças condicionais, obtêm-se as **Equações de Yule-Walker**:
+
+$$ \rho_k = \phi_1 \rho_{k-1} + \phi_2 \rho_{k-2} + \dots + \phi_p \rho_{k-p}, \quad \forall k \ge 1 $$
+
+Em forma matricial:
+$$
+\begin{bmatrix}
+1 & \rho_1 & \dots & \rho_{p-1} \\
+\rho_1 & 1 & \dots & \rho_{p-2} \\
+\vdots & \vdots & \ddots & \vdots \\
+\rho_{p-1} & \rho_{p-2} & \dots & 1
+\end{bmatrix}
+\begin{bmatrix}
+\phi_1 \\
+\phi_2 \\
+\vdots \\
+\phi_p
+\end{bmatrix}
+=
+\begin{bmatrix}
+\rho_1 \\
+\rho_2 \\
+\vdots \\
+\rho_p
+\end{bmatrix}
+$$
+Essas relações fundamentam a estimação preliminar dos parâmetros autorregressivos via método dos momentos.
+
+---
+
+## O Modelo de Médias Móveis: MA($q$)
+
+### Definição e Polinômio
+
+Um processo $\{X_t\}$ segue um modelo de médias móveis de ordem $q$ ($\mathrm{MA}(q)$) se for gerado por uma combinação linear finita dos choques aleatórios presente e passados:
+
+$$ X_t = \mu + \varepsilon_t - \theta_1 \varepsilon_{t-1} - \theta_2 \varepsilon_{t-2} - \dots - \theta_q \varepsilon_{t-q} $$
+
+Em notação operacional:
+$$ X_t = \mu + \Theta(B) \varepsilon_t $$
+onde $\Theta(B) = 1 - \theta_1 B - \theta_2 B^2 - \dots - \theta_q B^q$.
+
+---
+
+### Estacionariedade e Invertibilidade
+
+- **Estacionariedade:** Todo processo $\mathrm{MA}(q)$ finito é **incondicionalmente estacionário**, pois sua variância é soma finita de termos de ruído branco:
+  $$ \gamma_0 = \sigma_\varepsilon^2 \left(1 + \sum_{j=1}^q \theta_j^2\right) < \infty $$
+- **Invertibilidade:** O modelo é dito **invertível** se puder ser reescrito como um $\mathrm{AR}(\infty)$ convergente. A condição de invertibilidade exige que todas as raízes do polinômio:
+  $$ \Theta(z) = 1 - \theta_1 z - \theta_2 z^2 - \dots - \theta_q z^q = 0 $$
+  estejam **estritamente fora do círculo unitário**: $|z_j| > 1, \forall j$.
+
+**Exemplo MA(1):** $X_t = \varepsilon_t - \theta \varepsilon_{t-1}$.
+- Invertibilidade: $|\theta| < 1$;
+- Autocovariância: $\gamma_0 = \sigma_\varepsilon^2(1 + \theta^2)$, $\gamma_1 = -\theta \sigma_\varepsilon^2$, e $\gamma_\tau = 0$ para todo $\tau \ge 2$;
+- FAC:
+  $$ \rho_1 = \frac{-\theta}{1 + \theta^2}, \quad \rho_\tau = 0 \quad (\forall \tau \ge 2) $$
+  *(Apresenta **truncamento abrupto** após o lag $q=1$).*
+
+---
+
+## O Modelo ARMA($p, q$)
+
+O modelo $\mathrm{ARMA}(p, q)$ combina as duas estruturas sob o **princípio da parcimônia**:
+
+$$ \Phi(B) X_t = \Theta(B) \varepsilon_t $$
+
+**Pressupostos Teóricos (Morettin & Toloi):**
+1. Raízes de $\Phi(z) = 0$ fora do círculo unitário (estacionariedade);
+2. Raízes de $\Theta(z) = 0$ fora do círculo unitário (invertibilidade);
+3. Ausência de raízes comuns entre $\Phi(B)$ e $\Theta(B)$ (evita cancelamento e identificação espúria de ordens).
+
+---
+
+## Diagnóstico e Identificação: FAC vs. FACP
+
+A identificação preliminar das ordens $p$ e $q$ fundamenta-se nas assinaturas teóricas da **Função de Autocorrelação (FAC)** e da **Função de Autocorrelação Parcial (FACP)**:
+
+| Modelo | Função de Autocorrelação (FAC) | Função de Autocorrelação Parcial (FACP) |
+| :--- | :--- | :--- |
+| **AR($p$)** | Decaimento exponencial ou senoidal amortecido (*cauda infinita*) | **Trunca** (*corta*) abruptamente após a defasagem $p$ |
+| **MA($q$)** | **Trunca** (*corta*) abruptamente após a defasagem $q$ | Decaimento exponencial ou senoidal amortecido (*cauda infinita*) |
+| **ARMA($p, q$)** | Decaimento suave após o lag $q$ | Decaimento suave após o lag $p$ |
+
+---
+
+## Não Estacionariedade e a Classe ARIMA($p, d, q$)
+
+Séries econômicas com raiz unitária (como o logaritmo da produção física) não possuem média e variância fixas. O processo $\{Y_t\}$ segue um $\mathrm{ARIMA}(p, d, q)$ se sua $d$-ésima diferença for estacionária:
+
+$$ W_t = \Delta^d Y_t = (1 - B)^d Y_t $$
+$$ \Phi(B) (1 - B)^d Y_t = c + \Theta(B) \varepsilon_t $$
+
+onde $d$ representa o número de diferenças ordinárias necessárias para eliminar a raiz unitária (comumente $d=1$).
+
+---
+
+## Sazonalidade Estocástica: O Modelo SARIMA
+
+Para dados mensais da indústria ($s = 12$), o modelo **SARIMA$(p, d, q) \times (P, D, Q)_{12}$** acomoda tanto a dinâmica de curto prazo quanto o ciclo sazonal:
+
+$$ \Phi_p(B) \, \tilde{\Phi}_P(B^{12}) \, (1 - B)^d \, (1 - B^{12})^D Y_t = \Theta_q(B) \, \tilde{\Theta}_Q(B^{12}) \, \varepsilon_t $$
+
+onde:
+- $\tilde{\Phi}_P(B^{12}) = 1 - \Phi_1 B^{12} - \dots - \Phi_P B^{12P}$ é o operador AR sazonal;
+- $\tilde{\Theta}_Q(B^{12}) = 1 - \Theta_1 B^{12} - \dots - \Theta_Q B^{12Q}$ é o operador MA sazonal;
+- $D$ é a ordem de diferenciação sazonal ($\Delta_{12} = 1 - B^{12}$).
+
+---
+
+## Metodologia de Box-Jenkins no Projeto
+
+O ciclo metodológico a ser aplicado nos dados da PIM-PF consiste em:
+
+1. **Identificação e Pré-processamento:**
+   - Transformação Box-Cox (ou logaritmo) para estabilização de variância;
+   - Testes de raiz unitária (ADF, Phillips-Perron, KPSS);
+   - Inspeção gráfica de FAC e FACP para propor ordens candidatas $(p, d, q) \times (P, D, Q)_s$.
+2. **Estimação:**
+   - Estimação por Máxima Verossimilhança Exata ou Condicional (CSS-ML).
+3. **Diagnóstico dos Resíduos (Mandatório):**
+   - **Ausência de autocorrelação:** Teste de Ljung-Box sobre os resíduos padronizados:
+     $$ Q(m) = T(T+2) \sum_{k=1}^m \frac{r_k^2(\hat{\varepsilon})}{T - k} \sim \chi^2(m - p - q - P - Q) $$
+   - **Homocedasticidade:** Teste ARCH-LM para rejeitar heterocedasticidade condicional;
+   - **Normalidade:** Teste de Shapiro-Wilk ou Jarque-Bera.
+4. **Critérios de Seleção:**
+   - Comparação via AIC e BIC (penalizando a superparametrização).
