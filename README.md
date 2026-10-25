@@ -29,22 +29,42 @@ O projeto é documentado em formato de site reprodutível construído em **Quart
 
 ```text
 ic_producao_industrial/
-├── .github/
-│   └── workflows/
-│       └── publish.yml                      # Deploy automático para o GitHub Pages via GitHub Actions
-├── _quarto.yml                              # Configuração global do site Quarto (com freeze: auto)
-├── _freeze/                                 # Cache de resultados computacionais do R para build rápido
-├── index.qmd                                # Página inicial do site
-├── README.md                                # Documentação geral e guia do repositório
-├── renv.lock                                # Controle de versões de pacotes R (reprodutibilidade)
-├── dados/
+├── .agents/                                 # Sistema de Agentes Especializados (Antigravity)
+│   ├── AGENTS.md                            # Regras comuns: rigor acadêmico, citações e proteção de dados
+│   ├── agents/                              # Personas dos quatro agentes de pesquisa
+│   │   ├── economista-industrial.md         # Contexto econômico, indústria brasileira e mecanismos explicativos
+│   │   ├── econometrista.md                 # Séries temporais, previsão, identificação causal e robustez
+│   │   ├── revisor-codigo-econometria.md    # Revisão de código R/Quarto e validade da implementação
+│   │   └── conversor-papers.md              # Conversão de PDFs para Markdown com controle de qualidade
+│   └── skills/                              # Protocolos e procedimentos operacionais
+│       ├── leitura-critica-de-papers/       # Protocolo de leitura e fichamento
+│       ├── revisao-econometrica/            # Protocolo formal de avaliação de modelos
+│       ├── revisao-reprodutibilidade/       # Checklist de auditoria de dados e código R/renv
+│       └── conversao-pdf-academico/         # Extração e conferência de artigos
+├── literatura/                              # Gestão de papers e acervo acadêmico (BYOP)
+│   ├── README.md                            # Documentação da biblioteca e política de direitos autorais
+│   ├── pdf-original/                        # PDFs originais (ignorados no Git; adicionados localmente)
+│   ├── markdown/                            # Artigos transcritos em KaTeX (ignorados no Git; gerados localmente)
+│   ├── fichamentos/                         # Fichas de leitura crítica (ignoradas no Git; geradas localmente)
+│   └── indice/                              # Catálogo relacional público (indice-papers.csv)
+├── dados/                                   # Bases de dados brutas e dados auxiliares
 │   ├── ipeadataPI.csv                       # Série mensal da Produção Industrial (IBGE / IPEADATA)
 │   └── .env                                 # Chaves de API (ex.: FRED_API_KEY, ignorado pelo Git)
-├── analises/                                # Análises empíricas e modelagem estatística
+├── analises/                                # Análises empíricas e cadernos em Quarto (.qmd)
 │   ├── 01_exploratoria.qmd                  # Análise exploratória, decomposição STL e tendências iniciais
 │   └── 02_controlesintetico.qmd             # Impacto da Crise de 2014 via Controle Sintético (OCDE/FRED)
-└── anotacoes/                               # Resumos teóricos, revisões de literatura e guias metodológicos
-    └── variaveis_de_controle_sintetico.qmd  # Guia prático e teórico do Método de Controle Sintético
+├── anotacoes/                               # Resumos teóricos e notas metodológicas
+│   └── variaveis_de_controle_sintetico.qmd  # Guia prático e teórico do Método de Controle Sintético
+├── R/                                       # Scripts e funções modulares em R
+├── resultados/                              # Figuras, tabelas exportadas e modelos serializados (.rds)
+│   ├── figuras/
+│   ├── tabelas/
+│   └── modelos/
+├── RAG-SETUP.md                             # Plano de integração Zotero + Markdown + Vector DB
+├── PROMPTS-DE-TESTE.md                      # Bateria de testes de validação para os agentes
+├── renv.lock                                # Controle de versões de pacotes R (reprodutibilidade)
+├── _quarto.yml                              # Configuração global do site Quarto
+└── README.md                                # Documentação geral do repositório
 ```
 
 ### Índice de Conteúdos Desenvolvidos

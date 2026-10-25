@@ -19,6 +19,48 @@ _site/
 **/*.quarto_ipynb
 *.rmarkdown
 
-agents/
-
 /anotacoes/capitulo2.qmd
+
+# ==============================================================================
+# Literatura e Acervo Local de Papers (Proteção de Direitos Autorais / BYOP)
+# ==============================================================================
+# Os agentes (.agents/) e a estrutura de pastas são públicos, mas cada usuário
+# faz upload/conversão dos seus próprios papers localmente sem enviá-los ao Git.
+literatura/pdf-original/*
+!literatura/pdf-original/.gitkeep
+!literatura/pdf-original/README.md
+
+literatura/markdown/*
+!literatura/markdown/.gitkeep
+!literatura/markdown/README.md
+
+literatura/fichamentos/*
+!literatura/fichamentos/.gitkeep
+!literatura/fichamentos/README.md
+
+# Bancos vetoriais locais (RAG)
+.rag_db/
+.chromadb/
+.lancedb/
+
+# ==============================================================================
+# Literatura e Acervo Local de Papers (Proteção de Direitos Autorais / BYOP)
+# ==============================================================================
+# Os agentes (.agents/) e a estrutura de pastas são públicos, mas cada usuário
+# faz upload/conversão dos seus próprios papers localmente sem enviá-los ao Git.
+literatura/pdf-original/*
+!literatura/pdf-original/.gitkeep
+!literatura/pdf-original/README.md
+
+literatura/markdown/*
+!literatura/markdown/.gitkeep
+!literatura/markdown/README.md
+
+literatura/fichamentos/*
+!literatura/fichamentos/.gitkeep
+!literatura/fichamentos/README.md
+
+# Bancos vetoriais locais (RAG)
+.rag_db/
+.chromadb/
+.lancedb/
